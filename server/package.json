@@ -1,0 +1,27 @@
+{
+  "name": "@cursive/server",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts"
+  },
+  "dependencies": {
+    "@hocuspocus/server": "^2.15.0",
+    "@cursive/shared": "*",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "ws": "^8.21.0",
+    "yjs": "^13.6.19",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.7.0",
+    "@types/ws": "^8.5.13",
+    "tsx": "^4.19.1",
+    "typescript": "^5.6.2"
+  }
+}

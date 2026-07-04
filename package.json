@@ -1,0 +1,16 @@
+{
+  "name": "cursive",
+  "private": true,
+  "workspaces": [
+    "client",
+    "server",
+    "shared"
+  ],
+  "scripts": {
+    "dev:client": "npm run dev --workspace=client",
+    "dev:server": "npm run dev --workspace=server"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
