@@ -1,12 +1,12 @@
 import { Text } from "react-konva";
 import type { TextShape as TextShapeType } from "@cursive/shared";
+import { SELECTION_HIGHLIGHT, type ShapeInteractionProps } from "./ShapeInteraction.js";
 
-interface Props {
+interface Props extends ShapeInteractionProps {
   shape: TextShapeType;
-  onDragEnd: (x: number, y: number) => void;
 }
 
-export function TextShape({ shape, onDragEnd }: Props) {
+export function TextShape({ shape, draggable, isSelected, onDragEnd, onClick }: Props) {
   return (
     <Text
       x={shape.x}
@@ -15,8 +15,11 @@ export function TextShape({ shape, onDragEnd }: Props) {
       fontSize={shape.fontSize}
       rotation={shape.rotation}
       fill={shape.fillColor}
-      draggable
+      draggable={draggable}
+      onClick={onClick}
+      onTap={onClick}
       onDragEnd={(e) => onDragEnd(e.target.x(), e.target.y())}
+      {...(isSelected ? SELECTION_HIGHLIGHT : {})}
     />
   );
 }

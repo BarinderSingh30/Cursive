@@ -29,3 +29,6 @@ docker/postgres/data/
 # Claude Code local tooling config (not part of the app)
 .claude/
 CLAUDE.md
+
+# Personal learning notes (not part of the app)
+LEARNING.md

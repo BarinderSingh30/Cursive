@@ -1,12 +1,12 @@
 import { Rect } from "react-konva";
 import type { RectangleShape as RectangleShapeType } from "@cursive/shared";
+import { SELECTION_HIGHLIGHT, type ShapeInteractionProps } from "./ShapeInteraction.js";
 
-interface Props {
+interface Props extends ShapeInteractionProps {
   shape: RectangleShapeType;
-  onDragEnd: (x: number, y: number) => void;
 }
 
-export function RectangleShape({ shape, onDragEnd }: Props) {
+export function RectangleShape({ shape, draggable, isSelected, onDragEnd, onClick }: Props) {
   return (
     <Rect
       x={shape.x}
@@ -17,8 +17,11 @@ export function RectangleShape({ shape, onDragEnd }: Props) {
       stroke={shape.strokeColor}
       strokeWidth={shape.strokeWidth}
       fill={shape.fillColor ?? undefined}
-      draggable
+      draggable={draggable}
+      onClick={onClick}
+      onTap={onClick}
       onDragEnd={(e) => onDragEnd(e.target.x(), e.target.y())}
+      {...(isSelected ? SELECTION_HIGHLIGHT : {})}
     />
   );
 }

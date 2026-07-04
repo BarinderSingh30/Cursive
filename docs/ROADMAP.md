@@ -2,7 +2,7 @@
 
 This project is built in six phases, each one a working, demoable product on its own.
 
-- [ ] **Phase 1 — Canvas + sync.** Multiplayer drawing/shapes/move, live cursors, presence. Single server instance, in-memory, no accounts yet.
+- [x] **Phase 1 — Canvas + sync.** Multiplayer drawing/shapes/move, live cursors, presence. Single server instance, in-memory, no accounts yet. Shapes sync field-by-field (nested `Y.Map` per shape), so concurrent edits to different fields of the same shape both survive instead of one clobbering the other — verified with 3 simulated concurrent clients via the `multiplayer-sim-tester` subagent. Selection + delete (Delete/Backspace) and window-resize handling included.
 - [ ] **Phase 2 — Auth + friends + boards.** Login (email/password + Google/GitHub), a dashboard of your boards, adding friends. PostgreSQL via Docker from this point on.
 - [ ] **Phase 3 — Chat.** DMs and group chats between friends.
 - [ ] **Phase 4 — Video calls.** Camera/mic while sketching together, via a self-hosted LiveKit server.

@@ -19,7 +19,7 @@ function randomPresence(): PresenceState {
 
 function BoardInner({ roomId }: { roomId: string }) {
   const { doc, provider } = useYjsDocument(roomId);
-  const { shapes, addShape, updateShape } = useYShapes(doc);
+  const { shapes, addShape, updateShape, removeShape } = useYShapes(doc);
   const localPresence = useMemo(randomPresence, []);
   const { peers, updateCursor } = useAwareness(provider, localPresence);
   const { tool } = useActiveTool();
@@ -36,6 +36,7 @@ function BoardInner({ roomId }: { roomId: string }) {
         }}
       >
         <Toolbar />
+        <span style={{ fontSize: 12, color: "#868e96" }}>Select tool → click a shape → Delete/Backspace to remove</span>
         <PresenceList self={localPresence} peers={peers} />
       </div>
       <div style={{ flex: 1 }}>
@@ -45,6 +46,7 @@ function BoardInner({ roomId }: { roomId: string }) {
           activeTool={tool}
           onAddShape={addShape}
           onUpdateShape={updateShape}
+          onRemoveShape={removeShape}
           onCursorMove={updateCursor}
         />
       </div>
