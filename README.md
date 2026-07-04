@@ -21,14 +21,14 @@ A real-time collaborative whiteboard — a stripped-down Figma/Excalidraw crosse
 
 **Broadcast mode (the "Twitch" part)**
 - Share a read-only link to a board — viewers (logged in or fully anonymous) can watch the canvas update live, watch the chat, and watch/listen to the collaborators' call
-- Viewers can only ever read — they can't edit the canvas, send chat messages, or publish their own camera/mic. That boundary is enforced server-side, not just hidden in the UI.
+- Viewers can never edit the canvas or publish their own camera/mic, full stop — that boundary is enforced server-side, not just hidden in the UI. Chat is the one exception, and it mirrors Twitch exactly: a **logged-in** viewer can type in chat even though they can't touch the canvas, while a fully **anonymous** link viewer (no account) can only watch, on both the canvas and the chat.
 
 **Built to actually scale, not just claim to**
 - Runs as multiple identical Node instances behind an nginx load balancer, sharing state through Redis and Postgres instead of each instance's own memory — a deliberate portfolio goal, not a requirement of the app's actual current scale
 
 ## Status
 
-This is being built in 6 phases, each a working product on its own. **Currently on Phase 1** (canvas + sync — no accounts yet). See [`docs/ROADMAP.md`](docs/ROADMAP.md) for the full checklist and [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for how the system fits together as each phase lands.
+This is being built in 6 phases, each a working product on its own. **Currently on Phase 2** (accounts, friends, and boards). See [`docs/ROADMAP.md`](docs/ROADMAP.md) for the full checklist and [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for how the system fits together as each phase lands.
 
 ## Tech stack
 

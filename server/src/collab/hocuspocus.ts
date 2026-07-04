@@ -1,16 +1,36 @@
 import { Server } from "@hocuspocus/server";
+import { roleAtLeast } from "@cursive/shared";
 import { persistenceExtensions } from "./persistence.js";
+import { verifySyncTicket } from "../authorization/syncTicket.js";
 
 /**
  * Hosts every board's Yjs document and relays sync updates between clients.
  * It never inspects shape data — Yjs updates are opaque binary diffs, so this
  * file has no canvas-specific code at all.
  *
- * Phase 2 will add an `onAuthenticate` hook here that checks the connecting
- * user's board role via `authorization/boardAccess`, rejecting or marking the
- * connection read-only accordingly.
+ * The room name (`documentName`) IS the board's id. The client fetches a
+ * short-lived signed ticket from `GET /api/boards/:boardId/sync-ticket`
+ * (which already checked the caller's real role via `boardAccess`) and
+ * passes it here as `token`. This hook just verifies that ticket instead of
+ * re-deriving the role itself — one source of truth either way.
  */
 export const hocuspocus = Server.configure({
   name: "whiteboard-sync",
   extensions: persistenceExtensions,
+  onAuthenticate: async ({ token, documentName, connection }) => {
+    const payload = verifySyncTicket(token);
+    if (!payload || payload.boardId !== documentName) {
+      throw new Error("Not authorized");
+    }
+
+    // Below "collaborator" (i.e. a viewer) can still connect and receive
+    // updates, but Hocuspocus itself will reject any sync message this
+    // connection tries to send — enforced by the library, not just hidden
+    // in the client UI.
+    if (!roleAtLeast(payload.role, "collaborator")) {
+      connection.readOnly = true;
+    }
+
+    return { userId: payload.userId, role: payload.role };
+  },
 });
