@@ -1,4 +1,5 @@
 import type { Conversation } from "@prisma/client";
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library.js";
 import type { ChatMessage, ConversationSummary } from "@cursive/shared";
 import { prisma } from "../db/prisma.js";
 import { orderedPair } from "../db/orderedPair.js";
@@ -29,7 +30,13 @@ export async function findOrCreateDm(
       data: { isGroup: false, dmKey, members: { create: [{ userId: selfId }, { userId: friendId }] } },
     });
     return { conversation, created: true };
-  } catch {
+  } catch (error) {
+    const isDmKeyRaceLoss =
+      error instanceof PrismaClientKnownRequestError &&
+      error.code === "P2002" &&
+      (error.meta?.target as string[] | string | undefined)?.includes("dmKey");
+    if (!isDmKeyRaceLoss) throw error;
+
     // Two near-simultaneous first messages can both pass the friend check
     // above and race to create the same dmKey — the DB's unique constraint
     // rejects the loser. Treat that as success: fetch what won the race.
