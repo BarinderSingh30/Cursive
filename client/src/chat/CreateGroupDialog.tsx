@@ -1,6 +1,7 @@
 import { useRef, useState, type FormEvent } from "react";
 import { useFriends } from "../friends/useFriends.js";
 import { api } from "../api/client.js";
+import { FriendSearch } from "./FriendSearch.js";
 
 interface Props {
   onCreated: (conversationId: string) => void;
@@ -12,8 +13,12 @@ export function CreateGroupDialog({ onCreated }: Props) {
   const [name, setName] = useState("");
   const [selectedEmails, setSelectedEmails] = useState<string[]>([]);
 
-  const toggleFriend = (email: string) => {
-    setSelectedEmails((current) => (current.includes(email) ? current.filter((e) => e !== email) : [...current, email]));
+  const addFriend = (email: string) => {
+    setSelectedEmails((current) => (current.includes(email) ? current : [...current, email]));
+  };
+
+  const removeFriend = (email: string) => {
+    setSelectedEmails((current) => current.filter((e) => e !== email));
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -25,6 +30,9 @@ export function CreateGroupDialog({ onCreated }: Props) {
     onCreated(id);
   };
 
+  const selectedFriends = selectedEmails.map((email) => friends.find((f) => f.email === email)).filter((f) => f != null);
+  const searchableFriends = friends.filter((f) => !selectedEmails.includes(f.email));
+
   return (
     <>
       <button type="button" onClick={() => dialogRef.current?.showModal()}>
@@ -34,14 +42,27 @@ export function CreateGroupDialog({ onCreated }: Props) {
         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 8, minWidth: 260 }}>
           <h3 style={{ margin: 0 }}>New group chat</h3>
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Group name" required />
-          <div style={{ display: "flex", flexDirection: "column", gap: 4, maxHeight: 160, overflowY: "auto" }}>
-            {friends.map((f) => (
-              <label key={f.id} style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                <input type="checkbox" checked={selectedEmails.includes(f.email)} onChange={() => toggleFriend(f.email)} />
-                {f.name ?? f.email}
-              </label>
-            ))}
-          </div>
+          {selectedFriends.length > 0 && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {selectedFriends.map((f) => (
+                <button
+                  key={f.id}
+                  type="button"
+                  onClick={() => removeFriend(f.email)}
+                  style={{
+                    border: "none",
+                    borderRadius: 12,
+                    padding: "2px 8px",
+                    background: "#e7f5ff",
+                    cursor: "pointer",
+                  }}
+                >
+                  {f.name ?? f.email} ✕
+                </button>
+              ))}
+            </div>
+          )}
+          <FriendSearch friends={searchableFriends} onSelect={addFriend} />
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
             <button type="button" onClick={() => dialogRef.current?.close()}>
               Cancel
