@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useFriends } from "../friends/useFriends.js";
 import { api } from "../api/client.js";
@@ -9,17 +9,30 @@ import { MessageInput } from "./MessageInput.js";
 import { CreateGroupDialog } from "./CreateGroupDialog.js";
 
 export function ChatPage() {
-  const { conversations, messagesByConversation, loadHistory, sendMessage, markRead, refreshConversations } =
-    useChatSocket();
+  const {
+    conversations,
+    messagesByConversation,
+    typingByConversation,
+    hasMoreByConversation,
+    loadingByConversation,
+    loadMore,
+    sendMessage,
+    notifyTyping,
+    markRead,
+    refreshConversations,
+  } = useChatSocket();
   const { friends } = useFriends();
   const [activeId, setActiveId] = useState<string | null>(null);
+  const loadedConversationsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
-    if (activeId) {
-      loadHistory(activeId);
-      markRead(activeId);
+    if (!activeId) return;
+    if (!loadedConversationsRef.current.has(activeId)) {
+      loadedConversationsRef.current.add(activeId);
+      loadMore(activeId);
     }
-  }, [activeId, loadHistory, markRead]);
+    markRead(activeId);
+  }, [activeId, loadMore, markRead]);
 
   const startDm = async (friendEmail: string) => {
     const { id } = await api.post<{ id: string }>("/api/chat/conversations/dm", { friendEmail });

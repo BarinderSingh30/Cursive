@@ -79,10 +79,34 @@ export function useChatSocket() {
     };
   }, [refreshConversations, handleTypingEvent]);
 
-  const loadHistory = useCallback(async (conversationId: string) => {
-    const history = await api.get<ChatMessage[]>(`/api/chat/conversations/${conversationId}/messages`);
-    setMessagesByConversation((current) => ({ ...current, [conversationId]: history.slice().reverse() }));
-  }, []);
+  const [hasMoreByConversation, setHasMoreByConversation] = useState<Record<string, boolean>>({});
+  const [loadingByConversation, setLoadingByConversation] = useState<Record<string, boolean>>({});
+
+  const loadMore = useCallback(
+    async (conversationId: string) => {
+      if (loadingByConversation[conversationId]) return;
+
+      setLoadingByConversation((current) => ({ ...current, [conversationId]: true }));
+      try {
+        const existing = messagesByConversation[conversationId] ?? [];
+        const oldest = existing[0];
+        const query = oldest ? `?before=${oldest.id}` : "";
+        const page = await api.get<ChatMessage[]>(`/api/chat/conversations/${conversationId}/messages${query}`);
+        const newMessages = page.slice().reverse();
+
+        setMessagesByConversation((current) => {
+          const currentMessages = current[conversationId] ?? [];
+          const existingIds = new Set(currentMessages.map((m) => m.id));
+          const deduped = newMessages.filter((m) => !existingIds.has(m.id));
+          return { ...current, [conversationId]: [...deduped, ...currentMessages] };
+        });
+        setHasMoreByConversation((current) => ({ ...current, [conversationId]: page.length === 30 }));
+      } finally {
+        setLoadingByConversation((current) => ({ ...current, [conversationId]: false }));
+      }
+    },
+    [messagesByConversation, loadingByConversation],
+  );
 
   const sendMessage = useCallback((conversationId: string, content: string) => {
     const event: ChatClientEvent = { type: "send", conversationId, content };
@@ -112,7 +136,9 @@ export function useChatSocket() {
     conversations,
     messagesByConversation,
     typingByConversation,
-    loadHistory,
+    hasMoreByConversation,
+    loadingByConversation,
+    loadMore,
     sendMessage,
     notifyTyping,
     markRead,

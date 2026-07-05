@@ -70,3 +70,79 @@ describe("useChatSocket typing", () => {
     expect(socket.sent).toHaveLength(2);
   });
 });
+
+describe("useChatSocket pagination", () => {
+  it("loads the latest page on first call with no cursor", async () => {
+    mockApiGet({
+      "/api/chat/conversations": [],
+      "/api/chat/ticket": { ticket: "t" },
+      "/api/chat/conversations/conv-1/messages": [
+        {
+          id: "m3",
+          conversationId: "conv-1",
+          senderId: "bob",
+          senderName: "Bob",
+          content: "c3",
+          createdAt: "2026-01-01T00:00:02.000Z",
+        },
+        {
+          id: "m2",
+          conversationId: "conv-1",
+          senderId: "bob",
+          senderName: "Bob",
+          content: "c2",
+          createdAt: "2026-01-01T00:00:01.000Z",
+        },
+      ],
+    });
+
+    const { result } = renderHook(() => useChatSocket());
+    await waitFor(() => expect(MockWebSocket.instances).toHaveLength(1));
+
+    await act(async () => {
+      await result.current.loadMore("conv-1");
+    });
+
+    expect(result.current.messagesByConversation["conv-1"].map((m) => m.id)).toEqual(["m2", "m3"]);
+    expect(result.current.hasMoreByConversation["conv-1"]).toBe(false);
+  });
+
+  it("prepends an older page using the oldest loaded message as the cursor, and dedupes", async () => {
+    mockApiGet({
+      "/api/chat/conversations": [],
+      "/api/chat/ticket": { ticket: "t" },
+      "/api/chat/conversations/conv-1/messages": [
+        {
+          id: "m2",
+          conversationId: "conv-1",
+          senderId: "bob",
+          senderName: "Bob",
+          content: "c2",
+          createdAt: "2026-01-01T00:00:01.000Z",
+        },
+      ],
+      "/api/chat/conversations/conv-1/messages?before=m2": [
+        {
+          id: "m1",
+          conversationId: "conv-1",
+          senderId: "bob",
+          senderName: "Bob",
+          content: "c1",
+          createdAt: "2026-01-01T00:00:00.000Z",
+        },
+      ],
+    });
+
+    const { result } = renderHook(() => useChatSocket());
+    await waitFor(() => expect(MockWebSocket.instances).toHaveLength(1));
+
+    await act(async () => {
+      await result.current.loadMore("conv-1");
+    });
+    await act(async () => {
+      await result.current.loadMore("conv-1");
+    });
+
+    expect(result.current.messagesByConversation["conv-1"].map((m) => m.id)).toEqual(["m1", "m2"]);
+  });
+});
