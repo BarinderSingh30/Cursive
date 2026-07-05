@@ -10,7 +10,7 @@ import { prisma } from "../db/prisma.js";
 import { orderedPair } from "../db/orderedPair.js";
 import { requireAuth } from "../authorization/requireAuth.js";
 import { requireBoardRole } from "../authorization/requireBoardRole.js";
-import { mintSyncTicket } from "../authorization/syncTicket.js";
+import { mintConnectionTicket } from "../authorization/connectionTicket.js";
 import { notifyBoardMembershipChanged, notifyBoardDeleted } from "../collab/hocuspocus.js";
 
 export const boardsRouter = Router();
@@ -73,7 +73,8 @@ boardsRouter.delete("/:boardId", requireBoardRole("owner"), async (req, res) => 
 });
 
 boardsRouter.get("/:boardId/sync-ticket", requireBoardRole("viewer"), async (req, res) => {
-  const ticket = mintSyncTicket({
+  const ticket = mintConnectionTicket({
+    purpose: "board-sync",
     userId: res.locals.userId as string,
     boardId: req.params.boardId,
     role: res.locals.boardRole,

@@ -1,7 +1,7 @@
 import { Server } from "@hocuspocus/server";
 import { roleAtLeast } from "@cursive/shared";
 import { persistenceExtensions } from "./persistence.js";
-import { verifySyncTicket } from "../authorization/syncTicket.js";
+import { verifyConnectionTicket } from "../authorization/connectionTicket.js";
 
 /**
  * Hosts every board's Yjs document and relays sync updates between clients.
@@ -18,8 +18,8 @@ export const hocuspocus = Server.configure({
   name: "whiteboard-sync",
   extensions: persistenceExtensions,
   onAuthenticate: async ({ token, documentName, connection }) => {
-    const payload = verifySyncTicket(token);
-    if (!payload || payload.boardId !== documentName) {
+    const payload = verifyConnectionTicket(token);
+    if (!payload || payload.purpose !== "board-sync" || payload.boardId !== documentName) {
       throw new Error("Not authorized");
     }
 

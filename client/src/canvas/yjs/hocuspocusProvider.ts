@@ -9,7 +9,7 @@ export function createHocuspocusProvider(boardId: string, document: Y.Doc) {
     name: boardId,
     document,
     // Fetched fresh on every (re)connect attempt rather than passed once —
-    // tickets are short-lived on purpose, see server/src/authorization/syncTicket.ts.
+    // tickets are short-lived on purpose, see server/src/authorization/connectionTicket.ts.
     token: async () => {
       const { ticket } = await api.get<{ ticket: string }>(`/api/boards/${boardId}/sync-ticket`);
       return ticket;
