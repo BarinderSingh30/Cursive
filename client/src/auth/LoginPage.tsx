@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { signIn } from "./authClient.js";
 import { OAuthButtons } from "./OAuthButtons.js";
 
@@ -7,7 +7,6 @@ export function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const navigate = useNavigate();
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -17,7 +16,12 @@ export function LoginPage() {
       setError(signInError.message ?? "Could not log in");
       return;
     }
-    navigate("/dashboard");
+    // A full page navigation (not react-router's navigate) on purpose: it
+    // guarantees the dashboard's first render does a fresh session fetch
+    // with the cookie the browser just received, instead of racing
+    // useSession()'s client-side cache, which sometimes hadn't caught up
+    // yet and bounced back to a blank login page.
+    window.location.href = "/dashboard";
   };
 
   return (

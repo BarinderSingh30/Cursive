@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { signUp } from "./authClient.js";
 import { OAuthButtons } from "./OAuthButtons.js";
 
@@ -8,7 +8,6 @@ export function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const navigate = useNavigate();
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -18,7 +17,8 @@ export function SignupPage() {
       setError(signUpError.message ?? "Could not sign up");
       return;
     }
-    navigate("/dashboard");
+    // See LoginPage's handleSubmit for why this is a full navigation, not react-router's navigate().
+    window.location.href = "/dashboard";
   };
 
   return (

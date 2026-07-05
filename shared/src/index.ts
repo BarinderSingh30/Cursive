@@ -3,3 +3,4 @@ export * from "./canvas/tools.js";
 export * from "./roles/index.js";
 export * from "./api/boards.schemas.js";
 export * from "./api/friends.schemas.js";
+export * from "./api/boardInvites.schemas.js";

@@ -15,6 +15,7 @@ interface Props {
   shapes: Shape[];
   peers: Map<number, PresenceState>;
   activeTool: Tool;
+  readOnly?: boolean;
   onAddShape: (shape: Shape) => void;
   onUpdateShape: (id: string, changes: Partial<Shape>) => void;
   onRemoveShape: (id: string) => void;
@@ -50,7 +51,16 @@ function isDegenerate(shape: Shape): boolean {
   return false;
 }
 
-export function CanvasStage({ shapes, peers, activeTool, onAddShape, onUpdateShape, onRemoveShape, onCursorMove }: Props) {
+export function CanvasStage({
+  shapes,
+  peers,
+  activeTool,
+  readOnly = false,
+  onAddShape,
+  onUpdateShape,
+  onRemoveShape,
+  onCursorMove,
+}: Props) {
   const [draft, setDraft] = useState<Shape | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const isDrawing = useRef(false);
@@ -58,6 +68,7 @@ export function CanvasStage({ shapes, peers, activeTool, onAddShape, onUpdateSha
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      if (readOnly) return;
       if ((e.key === "Delete" || e.key === "Backspace") && selectedId) {
         onRemoveShape(selectedId);
         setSelectedId(null);
@@ -65,7 +76,7 @@ export function CanvasStage({ shapes, peers, activeTool, onAddShape, onUpdateSha
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [selectedId, onRemoveShape]);
+  }, [selectedId, onRemoveShape, readOnly]);
 
   const getPointer = (stage: Konva.Stage) => stage.getPointerPosition();
 
@@ -126,6 +137,7 @@ export function CanvasStage({ shapes, peers, activeTool, onAddShape, onUpdateSha
   };
 
   const handleMouseDown = (e: Konva.KonvaEventObject<MouseEvent>) => {
+    if (readOnly) return;
     const stage = e.target.getStage();
     if (!stage) return;
 
@@ -161,6 +173,7 @@ export function CanvasStage({ shapes, peers, activeTool, onAddShape, onUpdateSha
   };
 
   const handleMouseMove = (e: Konva.KonvaEventObject<MouseEvent>) => {
+    if (readOnly) return;
     const stage = e.target.getStage();
     if (!stage) return;
     const pointer = getPointer(stage);
@@ -208,11 +221,11 @@ export function CanvasStage({ shapes, peers, activeTool, onAddShape, onUpdateSha
           <ShapeRenderer
             key={shape.id}
             shape={shape}
-            draggable={activeTool === "select"}
+            draggable={!readOnly && activeTool === "select"}
             isSelected={shape.id === selectedId}
             onDragEnd={(x, y) => onUpdateShape(shape.id, { x, y })}
             onClick={() => {
-              if (activeTool === "select") setSelectedId(shape.id);
+              if (!readOnly && activeTool === "select") setSelectedId(shape.id);
             }}
           />
         ))}

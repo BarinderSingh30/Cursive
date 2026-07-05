@@ -13,3 +13,11 @@ export const boardSummarySchema = z.object({
   createdAt: z.string(),
 });
 export type BoardSummary = z.infer<typeof boardSummarySchema>;
+
+export const boardMemberSchema = z.object({
+  userId: z.string(),
+  email: z.string(),
+  name: z.string().nullable(),
+  role: boardRoleSchema,
+});
+export type BoardMemberSummary = z.infer<typeof boardMemberSchema>;

@@ -21,12 +21,14 @@ model User {
   sessions Session[]
   accounts Account[]
 
-  ownedBoards      Board[]         @relation("BoardOwner")
-  boardMemberships BoardMember[]
-  sentRequests     FriendRequest[] @relation("RequestSender")
-  receivedRequests FriendRequest[] @relation("RequestReceiver")
-  friendshipsA     Friendship[]    @relation("FriendshipUserA")
-  friendshipsB     Friendship[]    @relation("FriendshipUserB")
+  ownedBoards          Board[]         @relation("BoardOwner")
+  boardMemberships     BoardMember[]
+  sentRequests         FriendRequest[] @relation("RequestSender")
+  receivedRequests     FriendRequest[] @relation("RequestReceiver")
+  friendshipsA         Friendship[]    @relation("FriendshipUserA")
+  friendshipsB         Friendship[]    @relation("FriendshipUserB")
+  sentBoardInvites     BoardInvite[]   @relation("BoardInviteSender")
+  receivedBoardInvites BoardInvite[]   @relation("BoardInviteReceiver")
 }
 
 model Session {
@@ -86,6 +88,7 @@ model Board {
 
   owner   User          @relation("BoardOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   members BoardMember[]
+  invites BoardInvite[]
 }
 
 model BoardMember {
@@ -130,4 +133,30 @@ model Friendship {
   userB User @relation("FriendshipUserB", fields: [userBId], references: [id], onDelete: Cascade)
 
   @@unique([userAId, userBId])
+}
+
+enum BoardInviteStatus {
+  pending
+  declined
+}
+
+/// A board membership doesn't take effect until the invitee accepts — accepting
+/// creates a BoardMember row and deletes this one; declining keeps this row
+/// around (status: declined) so the inviter can see it happened, until they
+/// dismiss it.
+model BoardInvite {
+  id        String            @id @default(cuid())
+  boardId   String
+  inviterId String
+  inviteeId String
+  role      BoardRole
+  status    BoardInviteStatus @default(pending)
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  board   Board @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  inviter User  @relation("BoardInviteSender", fields: [inviterId], references: [id], onDelete: Cascade)
+  invitee User  @relation("BoardInviteReceiver", fields: [inviteeId], references: [id], onDelete: Cascade)
+
+  @@unique([boardId, inviteeId])
 }

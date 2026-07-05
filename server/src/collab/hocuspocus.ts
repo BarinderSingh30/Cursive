@@ -34,3 +34,23 @@ export const hocuspocus = Server.configure({
     return { userId: payload.userId, role: payload.role };
   },
 });
+
+/**
+ * Lets a REST route (adding/removing a board member) push an instant signal
+ * to anyone currently connected to that board, over the same WebSocket
+ * connection they already have open — no separate notification channel
+ * needed. If nobody's connected to this board right now, this is a no-op
+ * (Hocuspocus only keeps a Document in memory while someone's using it).
+ */
+export function notifyBoardMembershipChanged(boardId: string) {
+  hocuspocus.documents.get(boardId)?.broadcastStateless(JSON.stringify({ type: "membership-changed" }));
+}
+
+/**
+ * Distinct from a plain membership change: deleting the whole board should
+ * show everyone currently on it an explicit message and let them choose when
+ * to leave, rather than silently yanking them back to the dashboard.
+ */
+export function notifyBoardDeleted(boardId: string) {
+  hocuspocus.documents.get(boardId)?.broadcastStateless(JSON.stringify({ type: "board-deleted" }));
+}
