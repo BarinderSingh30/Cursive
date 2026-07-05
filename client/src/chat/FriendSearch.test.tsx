@@ -14,15 +14,16 @@ function makeFriend(overrides: Partial<FriendSummary> = {}): FriendSummary {
 }
 
 describe("FriendSearch", () => {
-  it("shows all friends when the query is empty", () => {
+  it("shows nothing when the query is empty", () => {
     render(
       <FriendSearch
         friends={[makeFriend({ id: "f1", name: "Alice" }), makeFriend({ id: "f2", name: "Bob", email: "bob@example.com" })]}
         onSelect={vi.fn()}
       />,
     );
-    expect(screen.getByText("Alice")).toBeInTheDocument();
-    expect(screen.getByText("Bob")).toBeInTheDocument();
+    expect(screen.queryByText("Alice")).not.toBeInTheDocument();
+    expect(screen.queryByText("Bob")).not.toBeInTheDocument();
+    expect(screen.queryByText(/no friends found/i)).not.toBeInTheDocument();
   });
 
   it("filters friends by a name substring, case-insensitively", async () => {
@@ -64,8 +65,12 @@ describe("FriendSearch", () => {
     expect(screen.getByText(/no friends found/i)).toBeInTheDocument();
   });
 
-  it("falls back to showing the email when a friend has no name", () => {
+  it("falls back to showing the email when a friend has no name", async () => {
+    const user = userEvent.setup();
     render(<FriendSearch friends={[makeFriend({ name: null, email: "noname@example.com" })]} onSelect={vi.fn()} />);
+
+    await user.type(screen.getByPlaceholderText("Search friends…"), "noname");
+
     expect(screen.getByText("noname@example.com")).toBeInTheDocument();
   });
 
