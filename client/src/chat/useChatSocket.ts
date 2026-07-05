@@ -9,7 +9,7 @@ export interface TypingUser {
 }
 
 const TYPING_THROTTLE_MS = 2000;
-const TYPING_EXPIRY_MS = 3000;
+const TYPING_EXPIRY_MS = 8000;
 
 export function useChatSocket() {
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
@@ -27,6 +27,14 @@ export function useChatSocket() {
   useEffect(() => {
     refreshConversations();
   }, [refreshConversations]);
+
+  const clearTypingUser = useCallback((conversationId: string, userId: string) => {
+    clearTimeout(typingExpiryTimersRef.current[`${conversationId}:${userId}`]);
+    setTypingByConversation((current) => ({
+      ...current,
+      [conversationId]: (current[conversationId] ?? []).filter((u) => u.userId !== userId),
+    }));
+  }, []);
 
   const handleTypingEvent = useCallback((conversationId: string, userId: string, userName: string | null) => {
     setTypingByConversation((current) => {
@@ -62,6 +70,7 @@ export function useChatSocket() {
             ...current,
             [data.message.conversationId]: [...(current[data.message.conversationId] ?? []), data.message],
           }));
+          clearTypingUser(data.message.conversationId, data.message.senderId);
           refreshConversations();
         }
         if (data.type === "conversation-created") {
@@ -77,7 +86,7 @@ export function useChatSocket() {
       cancelled = true;
       socket?.close();
     };
-  }, [refreshConversations, handleTypingEvent]);
+  }, [refreshConversations, handleTypingEvent, clearTypingUser]);
 
   const [hasMoreByConversation, setHasMoreByConversation] = useState<Record<string, boolean>>({});
   const [loadingByConversation, setLoadingByConversation] = useState<Record<string, boolean>>({});

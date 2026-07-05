@@ -41,8 +41,37 @@ describe("useChatSocket typing", () => {
     expect(result.current.typingByConversation["conv-1"]).toEqual([{ userId: "alice", userName: "Alice" }]);
 
     act(() => {
-      vi.advanceTimersByTime(3000);
+      vi.advanceTimersByTime(8000);
     });
+    expect(result.current.typingByConversation["conv-1"]).toEqual([]);
+  });
+
+  it("clears the sender's typing indicator as soon as their message arrives", async () => {
+    mockApiGet({ "/api/chat/conversations": [], "/api/chat/ticket": { ticket: "t" } });
+
+    const { result } = renderHook(() => useChatSocket());
+    await waitFor(() => expect(MockWebSocket.instances).toHaveLength(1));
+    const socket = MockWebSocket.instances[0];
+
+    act(() => {
+      socket.emitMessage({ type: "typing", conversationId: "conv-1", userId: "alice", userName: "Alice" });
+    });
+    expect(result.current.typingByConversation["conv-1"]).toEqual([{ userId: "alice", userName: "Alice" }]);
+
+    act(() => {
+      socket.emitMessage({
+        type: "message",
+        message: {
+          id: "m1",
+          conversationId: "conv-1",
+          senderId: "alice",
+          senderName: "Alice",
+          content: "hi",
+          createdAt: new Date().toISOString(),
+        },
+      });
+    });
+
     expect(result.current.typingByConversation["conv-1"]).toEqual([]);
   });
 
