@@ -29,6 +29,7 @@ export function DashboardPage() {
           <span style={{ fontSize: 14, color: "#868e96" }}>{session?.user.name || session?.user.email}</span>
           <NotificationsButton onAccepted={refreshBoards} />
           <Link to="/friends">Friends</Link>
+          <Link to="/messages">Messages</Link>
           <button type="button" onClick={() => signOut().then(() => (window.location.href = "/login"))}>
             Log out
           </button>

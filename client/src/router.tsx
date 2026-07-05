@@ -5,6 +5,7 @@ import { SignupPage } from "./auth/SignupPage.js";
 import { RequireAuth } from "./auth/RequireAuth.js";
 import { DashboardPage } from "./dashboard/DashboardPage.js";
 import { FriendsPage } from "./friends/FriendsPage.js";
+import { ChatPage } from "./chat/ChatPage.js";
 
 function BoardRoute() {
   const { boardId } = useParams<{ boardId: string }>();
@@ -32,6 +33,14 @@ export function AppRouter() {
           element={
             <RequireAuth>
               <FriendsPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/messages"
+          element={
+            <RequireAuth>
+              <ChatPage />
             </RequireAuth>
           }
         />
