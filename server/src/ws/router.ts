@@ -2,6 +2,7 @@ import type { IncomingMessage } from "node:http";
 import type { Duplex } from "node:stream";
 import { WebSocketServer } from "ws";
 import type { Hocuspocus } from "@hocuspocus/server";
+import { chatWss } from "../chat/wsGateway.js";
 
 /**
  * Dispatches raw HTTP upgrade requests by URL path, so Hocuspocus's own
@@ -25,7 +26,14 @@ export function createUpgradeHandler(hocuspocus: Hocuspocus) {
       return;
     }
 
-    // Phase 3 adds a "/chat" branch here for the chat + call-signaling gateway.
+    if (pathname === "/chat") {
+      chatWss.handleUpgrade(request, socket, head, (ws) => {
+        chatWss.emit("connection", ws, request);
+      });
+      return;
+    }
+
+    // Phase 3 adds a call-signaling gateway branch here in a later task.
     socket.destroy();
   };
 }
