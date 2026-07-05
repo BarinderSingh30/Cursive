@@ -68,6 +68,9 @@ export function ChatPage() {
             <MessageList
               messages={messagesByConversation[activeId] ?? []}
               typingUsers={typingByConversation[activeId] ?? []}
+              onReachTop={() => loadMore(activeId)}
+              loading={loadingByConversation[activeId] ?? false}
+              hasMore={hasMoreByConversation[activeId] ?? true}
             />
             <MessageInput onSend={(content) => sendMessage(activeId, content)} onTyping={() => notifyTyping(activeId)} />
           </>

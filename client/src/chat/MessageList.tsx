@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useLayoutEffect, useRef } from "react";
 import type { ChatMessage } from "@cursive/shared";
 import { useSession } from "../auth/authClient.js";
 
@@ -10,6 +10,9 @@ export interface TypingUser {
 interface Props {
   messages: ChatMessage[];
   typingUsers?: TypingUser[];
+  onReachTop?: () => void;
+  loading?: boolean;
+  hasMore?: boolean;
 }
 
 function formatTypingText(users: TypingUser[]): string {
@@ -21,16 +24,42 @@ function formatTypingText(users: TypingUser[]): string {
   return `${first}, ${second}, and ${rest.length} ${label} are typing…`;
 }
 
-export function MessageList({ messages, typingUsers = [] }: Props) {
-  const { data: session } = useSession();
-  const bottomRef = useRef<HTMLDivElement>(null);
+const SCROLL_TOP_THRESHOLD = 40;
 
-  useEffect(() => {
+export function MessageList({ messages, typingUsers = [], onReachTop, loading = false, hasMore = true }: Props) {
+  const { data: session } = useSession();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const prevScrollHeightRef = useRef<number | null>(null);
+
+  useLayoutEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    if (prevScrollHeightRef.current !== null) {
+      container.scrollTop += container.scrollHeight - prevScrollHeightRef.current;
+      prevScrollHeightRef.current = null;
+      return;
+    }
+
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages.length]);
+  }, [messages]);
+
+  const handleScroll = () => {
+    const container = containerRef.current;
+    if (!container || !onReachTop || loading || !hasMore) return;
+    if (container.scrollTop <= SCROLL_TOP_THRESHOLD) {
+      prevScrollHeightRef.current = container.scrollHeight;
+      onReachTop();
+    }
+  };
 
   return (
-    <div style={{ flex: 1, overflowY: "auto", padding: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+    <div
+      ref={containerRef}
+      onScroll={handleScroll}
+      style={{ flex: 1, overflowY: "auto", padding: 12, display: "flex", flexDirection: "column", gap: 8 }}
+    >
       {messages.map((m) => {
         const isSelf = m.senderId === session?.user.id;
         return (
