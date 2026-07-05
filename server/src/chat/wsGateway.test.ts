@@ -86,4 +86,75 @@ describe("chat WebSocket gateway", () => {
     const closeCode = await new Promise<number>((resolve) => socket.once("close", (code) => resolve(code)));
     expect(closeCode).toBe(4401);
   });
+
+  describe("typing indicator", () => {
+    it("relays a typing event to other conversation members, including the sender's name", async () => {
+      const alice = await prisma.user.create({
+        data: { email: "alice-typing@chat-ws-test.local", emailVerified: true, name: "Alice" },
+      });
+      const bob = await prisma.user.create({ data: { email: "bob-typing@chat-ws-test.local", emailVerified: true } });
+      const conversation = await prisma.conversation.create({
+        data: {
+          isGroup: false,
+          dmKey: `${alice.id}:${bob.id}`,
+          members: { create: [{ userId: alice.id }, { userId: bob.id }] },
+        },
+      });
+
+      const aliceSocket = await connect(mintConnectionTicket({ purpose: "chat", userId: alice.id }));
+      const bobSocket = await connect(mintConnectionTicket({ purpose: "chat", userId: bob.id }));
+
+      aliceSocket.send(JSON.stringify({ type: "typing", conversationId: conversation.id }));
+      const received = await nextMessage(bobSocket);
+
+      expect(received).toMatchObject({ type: "typing", conversationId: conversation.id, userId: alice.id, userName: "Alice" });
+
+      aliceSocket.close();
+      bobSocket.close();
+    });
+
+    it("does not relay a typing event back to the sender", async () => {
+      const alice = await prisma.user.create({ data: { email: "alice-typing2@chat-ws-test.local", emailVerified: true } });
+      const bob = await prisma.user.create({ data: { email: "bob-typing2@chat-ws-test.local", emailVerified: true } });
+      const conversation = await prisma.conversation.create({
+        data: {
+          isGroup: false,
+          dmKey: `${alice.id}:${bob.id}`,
+          members: { create: [{ userId: alice.id }, { userId: bob.id }] },
+        },
+      });
+
+      const aliceSocket = await connect(mintConnectionTicket({ purpose: "chat", userId: alice.id }));
+      let aliceReceivedOwnTyping = false;
+      aliceSocket.on("message", () => {
+        aliceReceivedOwnTyping = true;
+      });
+
+      aliceSocket.send(JSON.stringify({ type: "typing", conversationId: conversation.id }));
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      expect(aliceReceivedOwnTyping).toBe(false);
+      aliceSocket.close();
+    });
+
+    it("ignores a typing event from someone who isn't a member of the conversation", async () => {
+      const alice = await prisma.user.create({ data: { email: "alice-typing3@chat-ws-test.local", emailVerified: true } });
+      const eve = await prisma.user.create({ data: { email: "eve-typing@chat-ws-test.local", emailVerified: true } });
+      const conversation = await prisma.conversation.create({
+        data: { isGroup: false, dmKey: `${alice.id}:solo-typing`, members: { create: [{ userId: alice.id }] } },
+      });
+
+      const eveSocket = await connect(mintConnectionTicket({ purpose: "chat", userId: eve.id }));
+      let eveReceivedAnything = false;
+      eveSocket.on("message", () => {
+        eveReceivedAnything = true;
+      });
+
+      eveSocket.send(JSON.stringify({ type: "typing", conversationId: conversation.id }));
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      expect(eveReceivedAnything).toBe(false);
+      eveSocket.close();
+    });
+  });
 });
