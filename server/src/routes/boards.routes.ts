@@ -7,6 +7,7 @@ import {
   type PendingBoardInvite,
 } from "@cursive/shared";
 import { prisma } from "../db/prisma.js";
+import { orderedPair } from "../db/orderedPair.js";
 import { requireAuth } from "../authorization/requireAuth.js";
 import { requireBoardRole } from "../authorization/requireBoardRole.js";
 import { mintSyncTicket } from "../authorization/syncTicket.js";
@@ -100,7 +101,7 @@ boardsRouter.post("/:boardId/invites", requireBoardRole("owner"), async (req, re
     return;
   }
 
-  const [userAId, userBId] = ownerId < target.id ? [ownerId, target.id] : [target.id, ownerId];
+  const [userAId, userBId] = orderedPair(ownerId, target.id);
   const areFriends = await prisma.friendship.findUnique({ where: { userAId_userBId: { userAId, userBId } } });
   if (!areFriends) {
     res.status(403).json({ error: "You can only invite friends to a board" });

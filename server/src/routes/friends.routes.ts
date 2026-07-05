@@ -2,15 +2,11 @@ import { Router } from "express";
 import { sendFriendRequestSchema, type FriendRequestSummary, type FriendSummary } from "@cursive/shared";
 import { prisma } from "../db/prisma.js";
 import { requireAuth } from "../authorization/requireAuth.js";
+import { orderedPair } from "../db/orderedPair.js";
 
 export const friendsRouter = Router();
 
 friendsRouter.use(requireAuth);
-
-/** Always store a friendship with the lexicographically smaller id first, so A-B and B-A can't both exist. */
-function orderedPair(a: string, b: string): [string, string] {
-  return a < b ? [a, b] : [b, a];
-}
 
 friendsRouter.post("/requests", async (req, res) => {
   const parsed = sendFriendRequestSchema.safeParse(req.body);
