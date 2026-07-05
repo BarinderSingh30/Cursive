@@ -2,10 +2,16 @@ import { useState, type FormEvent } from "react";
 
 interface Props {
   onSend: (content: string) => void;
+  onTyping?: () => void;
 }
 
-export function MessageInput({ onSend }: Props) {
+export function MessageInput({ onSend, onTyping }: Props) {
   const [value, setValue] = useState("");
+
+  const handleChange = (next: string) => {
+    setValue(next);
+    if (next.trim().length > 0) onTyping?.();
+  };
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -20,7 +26,7 @@ export function MessageInput({ onSend }: Props) {
       <input
         type="text"
         value={value}
-        onChange={(e) => setValue(e.target.value)}
+        onChange={(e) => handleChange(e.target.value)}
         placeholder="Type a message…"
         style={{ flex: 1 }}
       />
