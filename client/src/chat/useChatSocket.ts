@@ -3,10 +3,21 @@ import type { ChatClientEvent, ChatMessage, ChatServerEvent, ConversationSummary
 import { api } from "../api/client.js";
 import { env } from "../env.js";
 
+export interface TypingUser {
+  userId: string;
+  userName: string | null;
+}
+
+const TYPING_THROTTLE_MS = 2000;
+const TYPING_EXPIRY_MS = 3000;
+
 export function useChatSocket() {
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [messagesByConversation, setMessagesByConversation] = useState<Record<string, ChatMessage[]>>({});
+  const [typingByConversation, setTypingByConversation] = useState<Record<string, TypingUser[]>>({});
   const socketRef = useRef<WebSocket | null>(null);
+  const typingCooldownRef = useRef<Record<string, boolean>>({});
+  const typingExpiryTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   const refreshConversations = useCallback(async () => {
     const list = await api.get<ConversationSummary[]>("/api/chat/conversations");
@@ -16,6 +27,22 @@ export function useChatSocket() {
   useEffect(() => {
     refreshConversations();
   }, [refreshConversations]);
+
+  const handleTypingEvent = useCallback((conversationId: string, userId: string, userName: string | null) => {
+    setTypingByConversation((current) => {
+      const withoutUser = (current[conversationId] ?? []).filter((u) => u.userId !== userId);
+      return { ...current, [conversationId]: [...withoutUser, { userId, userName }] };
+    });
+
+    const timerKey = `${conversationId}:${userId}`;
+    clearTimeout(typingExpiryTimersRef.current[timerKey]);
+    typingExpiryTimersRef.current[timerKey] = setTimeout(() => {
+      setTypingByConversation((current) => ({
+        ...current,
+        [conversationId]: (current[conversationId] ?? []).filter((u) => u.userId !== userId),
+      }));
+    }, TYPING_EXPIRY_MS);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -40,6 +67,9 @@ export function useChatSocket() {
         if (data.type === "conversation-created") {
           refreshConversations();
         }
+        if (data.type === "typing") {
+          handleTypingEvent(data.conversationId, data.userId, data.userName);
+        }
       };
     })();
 
@@ -47,7 +77,7 @@ export function useChatSocket() {
       cancelled = true;
       socket?.close();
     };
-  }, [refreshConversations]);
+  }, [refreshConversations, handleTypingEvent]);
 
   const loadHistory = useCallback(async (conversationId: string) => {
     const history = await api.get<ChatMessage[]>(`/api/chat/conversations/${conversationId}/messages`);
@@ -59,6 +89,17 @@ export function useChatSocket() {
     socketRef.current?.send(JSON.stringify(event));
   }, []);
 
+  const notifyTyping = useCallback((conversationId: string) => {
+    if (typingCooldownRef.current[conversationId]) return;
+    typingCooldownRef.current[conversationId] = true;
+    setTimeout(() => {
+      typingCooldownRef.current[conversationId] = false;
+    }, TYPING_THROTTLE_MS);
+
+    const event: ChatClientEvent = { type: "typing", conversationId };
+    socketRef.current?.send(JSON.stringify(event));
+  }, []);
+
   const markRead = useCallback(
     async (conversationId: string) => {
       await api.post(`/api/chat/conversations/${conversationId}/read`);
@@ -67,5 +108,14 @@ export function useChatSocket() {
     [refreshConversations],
   );
 
-  return { conversations, messagesByConversation, loadHistory, sendMessage, markRead, refreshConversations };
+  return {
+    conversations,
+    messagesByConversation,
+    typingByConversation,
+    loadHistory,
+    sendMessage,
+    notifyTyping,
+    markRead,
+    refreshConversations,
+  };
 }
