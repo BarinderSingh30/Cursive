@@ -4,6 +4,7 @@ import { useFriends } from "../friends/useFriends.js";
 import { api } from "../api/client.js";
 import { useChatSocket } from "./useChatSocket.js";
 import { ChatRoomList } from "./ChatRoomList.js";
+import { FriendSearch } from "./FriendSearch.js";
 import { MessageList } from "./MessageList.js";
 import { MessageInput } from "./MessageInput.js";
 import { CreateGroupDialog } from "./CreateGroupDialog.js";
@@ -48,16 +49,7 @@ export function ChatPage() {
           <Link to="/dashboard">← Boards</Link>
         </div>
         <div style={{ padding: 12, borderBottom: "1px solid #e0e0e0", display: "flex", flexDirection: "column", gap: 8 }}>
-          <select onChange={(e) => e.target.value && startDm(e.target.value)} value="">
-            <option value="" disabled>
-              Message a friend…
-            </option>
-            {friends.map((f) => (
-              <option key={f.id} value={f.email}>
-                {f.name ?? f.email}
-              </option>
-            ))}
-          </select>
+          <FriendSearch friends={friends} onSelect={startDm} />
           <CreateGroupDialog onCreated={setActiveId} />
         </div>
         <ChatRoomList conversations={conversations} activeId={activeId} onSelect={setActiveId} />
