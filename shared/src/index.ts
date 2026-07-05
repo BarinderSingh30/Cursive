@@ -4,3 +4,5 @@ export * from "./roles/index.js";
 export * from "./api/boards.schemas.js";
 export * from "./api/friends.schemas.js";
 export * from "./api/boardInvites.schemas.js";
+export * from "./api/chat.schemas.js";
+export * from "./ws-events/chat-events.js";
