@@ -2,11 +2,26 @@ import { useEffect, useRef } from "react";
 import type { ChatMessage } from "@cursive/shared";
 import { useSession } from "../auth/authClient.js";
 
-interface Props {
-  messages: ChatMessage[];
+export interface TypingUser {
+  userId: string;
+  userName: string | null;
 }
 
-export function MessageList({ messages }: Props) {
+interface Props {
+  messages: ChatMessage[];
+  typingUsers?: TypingUser[];
+}
+
+function formatTypingText(users: TypingUser[]): string {
+  const names = users.map((u) => u.userName ?? "Someone");
+  if (names.length === 1) return `${names[0]} is typing…`;
+  if (names.length === 2) return `${names[0]} and ${names[1]} are typing…`;
+  const [first, second, ...rest] = names;
+  const label = rest.length === 1 ? "other" : "others";
+  return `${first}, ${second}, and ${rest.length} ${label} are typing…`;
+}
+
+export function MessageList({ messages, typingUsers = [] }: Props) {
   const { data: session } = useSession();
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -34,6 +49,9 @@ export function MessageList({ messages }: Props) {
           </div>
         );
       })}
+      {typingUsers.length > 0 && (
+        <div style={{ fontSize: 12, color: "#868e96", fontStyle: "italic" }}>{formatTypingText(typingUsers)}</div>
+      )}
       <div ref={bottomRef} />
     </div>
   );

@@ -65,7 +65,10 @@ export function ChatPage() {
       <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
         {activeId ? (
           <>
-            <MessageList messages={messagesByConversation[activeId] ?? []} />
+            <MessageList
+              messages={messagesByConversation[activeId] ?? []}
+              typingUsers={typingByConversation[activeId] ?? []}
+            />
             <MessageInput onSend={(content) => sendMessage(activeId, content)} onTyping={() => notifyTyping(activeId)} />
           </>
         ) : (
