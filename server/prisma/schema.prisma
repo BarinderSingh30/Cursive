@@ -29,6 +29,8 @@ model User {
   friendshipsB         Friendship[]    @relation("FriendshipUserB")
   sentBoardInvites     BoardInvite[]   @relation("BoardInviteSender")
   receivedBoardInvites BoardInvite[]   @relation("BoardInviteReceiver")
+  conversationMemberships ConversationMember[]
+  sentMessages             Message[]
 }
 
 model Session {
@@ -159,4 +161,39 @@ model BoardInvite {
   invitee User  @relation("BoardInviteReceiver", fields: [inviteeId], references: [id], onDelete: Cascade)
 
   @@unique([boardId, inviteeId])
+}
+
+model Conversation {
+  id        String   @id @default(cuid())
+  isGroup   Boolean  @default(false)
+  name      String?
+  dmKey     String?  @unique
+  createdAt DateTime @default(now())
+
+  members  ConversationMember[]
+  messages Message[]
+}
+
+model ConversationMember {
+  id             String   @id @default(cuid())
+  conversationId String
+  userId         String
+  lastReadAt     DateTime @default(now())
+  joinedAt       DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+}
+
+model Message {
+  id             String   @id @default(cuid())
+  conversationId String
+  senderId       String
+  content        String
+  createdAt      DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
 }
