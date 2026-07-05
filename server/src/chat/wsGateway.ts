@@ -46,21 +46,26 @@ chatWss.on("connection", (socket: WebSocket, request: IncomingMessage) => {
     }
 
     if (event.type === "typing") {
-      const access = await resolveConversationMembership({ userId, conversationId: event.conversationId });
-      if (!access.isMember) return;
+      try {
+        const access = await resolveConversationMembership({ userId, conversationId: event.conversationId });
+        if (!access.isMember) return;
 
-      const sender = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
-      const members = await prisma.conversationMember.findMany({ where: { conversationId: event.conversationId } });
-      members
-        .filter((member) => member.userId !== userId)
-        .forEach((member) =>
-          chatPubSub.publish(userChannel(member.userId), {
-            type: "typing",
-            conversationId: event.conversationId,
-            userId,
-            userName: sender?.name ?? null,
-          } satisfies ChatServerEvent),
-        );
+        const sender = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
+        const members = await prisma.conversationMember.findMany({ where: { conversationId: event.conversationId } });
+        members
+          .filter((member) => member.userId !== userId)
+          .forEach((member) =>
+            chatPubSub.publish(userChannel(member.userId), {
+              type: "typing",
+              conversationId: event.conversationId,
+              userId,
+              userName: sender?.name ?? null,
+            } satisfies ChatServerEvent),
+          );
+      } catch (err) {
+        console.error(err);
+        send(socket, { type: "error", message: "Something went wrong" });
+      }
       return;
     }
 

@@ -144,16 +144,18 @@ describe("chat WebSocket gateway", () => {
         data: { isGroup: false, dmKey: `${alice.id}:solo-typing`, members: { create: [{ userId: alice.id }] } },
       });
 
+      const aliceSocket = await connect(mintConnectionTicket({ purpose: "chat", userId: alice.id }));
       const eveSocket = await connect(mintConnectionTicket({ purpose: "chat", userId: eve.id }));
-      let eveReceivedAnything = false;
-      eveSocket.on("message", () => {
-        eveReceivedAnything = true;
+      let aliceReceivedTyping = false;
+      aliceSocket.on("message", () => {
+        aliceReceivedTyping = true;
       });
 
       eveSocket.send(JSON.stringify({ type: "typing", conversationId: conversation.id }));
       await new Promise((resolve) => setTimeout(resolve, 100));
 
-      expect(eveReceivedAnything).toBe(false);
+      expect(aliceReceivedTyping).toBe(false);
+      aliceSocket.close();
       eveSocket.close();
     });
   });
