@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { prisma } from "../db/prisma.js";
 import { orderedPair } from "../db/orderedPair.js";
 import {
+  MembersNotFoundError,
   NotFriendsError,
   createGroupConversation,
   findOrCreateDm,
@@ -79,6 +80,14 @@ describe("createGroupConversation", () => {
     await expect(createGroupConversation(alice.id, "Study group", [stranger.email])).rejects.toBeInstanceOf(
       NotFriendsError,
     );
+  });
+
+  it("refuses a memberEmails entry that doesn't resolve to a real user", async () => {
+    const alice = await makeUser("alice7@chat-conv-test.local");
+
+    await expect(
+      createGroupConversation(alice.id, "Study group", ["nobody@chat-conv-test.local"]),
+    ).rejects.toBeInstanceOf(MembersNotFoundError);
   });
 });
 

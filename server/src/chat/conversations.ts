@@ -4,7 +4,19 @@ import type { ChatMessage, ConversationSummary } from "@cursive/shared";
 import { prisma } from "../db/prisma.js";
 import { orderedPair } from "../db/orderedPair.js";
 
-export class NotFriendsError extends Error {}
+export class NotFriendsError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "NotFriendsError";
+  }
+}
+
+export class MembersNotFoundError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "MembersNotFoundError";
+  }
+}
 
 async function areFriends(userAId: string, userBId: string): Promise<boolean> {
   const [a, b] = orderedPair(userAId, userBId);
@@ -17,7 +29,7 @@ export async function findOrCreateDm(
   selfId: string,
   friendId: string,
 ): Promise<{ conversation: Conversation; created: boolean }> {
-  if (!(await areFriends(selfId, friendId))) throw new NotFriendsError();
+  if (!(await areFriends(selfId, friendId))) throw new NotFriendsError("You can only message friends");
 
   const [a, b] = orderedPair(selfId, friendId);
   const dmKey = `${a}:${b}`;
@@ -52,10 +64,10 @@ export async function createGroupConversation(
   memberEmails: string[],
 ): Promise<Conversation> {
   const members = await prisma.user.findMany({ where: { email: { in: memberEmails } } });
-  if (members.length !== memberEmails.length) throw new Error("One or more members not found");
+  if (members.length !== memberEmails.length) throw new MembersNotFoundError("One or more members not found");
 
   for (const member of members) {
-    if (!(await areFriends(creatorId, member.id))) throw new NotFriendsError();
+    if (!(await areFriends(creatorId, member.id))) throw new NotFriendsError("You can only add friends to a group");
   }
 
   return prisma.conversation.create({

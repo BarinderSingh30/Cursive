@@ -8,6 +8,7 @@ import { auth } from "./auth/betterAuth.js";
 import { apiRouter } from "./routes/index.js";
 import { hocuspocus } from "./collab/hocuspocus.js";
 import { createUpgradeHandler } from "./ws/router.js";
+import { errorHandler } from "./middleware/errorHandler.js";
 
 const app = express();
 app.use(cors({ origin: env.CLIENT_URL, credentials: true }));
@@ -24,6 +25,9 @@ app.get("/health", (_req, res) => {
   const knownShapeTypes = shapeSchema.options.map((option) => option.shape.type.value);
   res.json({ status: "ok", knownShapeTypes });
 });
+
+// Must be mounted last — Express only routes errors to middleware registered after the route that threw.
+app.use(errorHandler);
 
 const httpServer = http.createServer(app);
 httpServer.on("upgrade", createUpgradeHandler(hocuspocus));

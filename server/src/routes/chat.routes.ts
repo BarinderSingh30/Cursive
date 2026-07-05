@@ -3,9 +3,9 @@ import { createDmSchema, createGroupSchema } from "@cursive/shared";
 import { prisma } from "../db/prisma.js";
 import { requireAuth } from "../authorization/requireAuth.js";
 import { mintConnectionTicket } from "../authorization/connectionTicket.js";
+import { asyncHandler } from "../middleware/asyncHandler.js";
 import { resolveConversationMembership } from "../chat/authorization.js";
 import {
-  NotFriendsError,
   createGroupConversation,
   findOrCreateDm,
   getConversationSummary,
@@ -27,45 +27,41 @@ chatRouter.get("/conversations", async (req, res) => {
   res.json(conversations);
 });
 
-chatRouter.post("/conversations/dm", async (req, res) => {
-  const parsed = createDmSchema.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: "Invalid request body" });
-    return;
-  }
+chatRouter.post(
+  "/conversations/dm",
+  asyncHandler(async (req, res) => {
+    const parsed = createDmSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "Invalid request body" });
+      return;
+    }
 
-  const selfId = res.locals.userId as string;
-  const friend = await prisma.user.findUnique({ where: { email: parsed.data.friendEmail } });
-  if (!friend) {
-    res.status(404).json({ error: "No user with that email" });
-    return;
-  }
+    const selfId = res.locals.userId as string;
+    const friend = await prisma.user.findUnique({ where: { email: parsed.data.friendEmail } });
+    if (!friend) {
+      res.status(404).json({ error: "No user with that email" });
+      return;
+    }
 
-  try {
     const { conversation, created } = await findOrCreateDm(selfId, friend.id);
     if (created) {
       const summaryForFriend = await getConversationSummary(conversation.id, friend.id);
       notifyConversationCreated([friend.id], { type: "conversation-created", conversation: summaryForFriend });
     }
     res.status(201).json({ id: conversation.id });
-  } catch (err) {
-    if (err instanceof NotFriendsError) {
-      res.status(403).json({ error: "You can only message friends" });
+  }),
+);
+
+chatRouter.post(
+  "/conversations/group",
+  asyncHandler(async (req, res) => {
+    const parsed = createGroupSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "Invalid request body" });
       return;
     }
-    throw err;
-  }
-});
 
-chatRouter.post("/conversations/group", async (req, res) => {
-  const parsed = createGroupSchema.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: "Invalid request body" });
-    return;
-  }
-
-  const selfId = res.locals.userId as string;
-  try {
+    const selfId = res.locals.userId as string;
     const conversation = await createGroupConversation(selfId, parsed.data.name, parsed.data.memberEmails);
     const members = await prisma.conversationMember.findMany({
       where: { conversationId: conversation.id, userId: { not: selfId } },
@@ -77,14 +73,8 @@ chatRouter.post("/conversations/group", async (req, res) => {
       }),
     );
     res.status(201).json({ id: conversation.id });
-  } catch (err) {
-    if (err instanceof NotFriendsError) {
-      res.status(403).json({ error: "You can only add friends to a group" });
-      return;
-    }
-    throw err;
-  }
-});
+  }),
+);
 
 chatRouter.get("/conversations/:id/messages", async (req, res) => {
   const access = await resolveConversationMembership({ userId: res.locals.userId as string, conversationId: req.params.id });

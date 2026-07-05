@@ -47,23 +47,28 @@ chatWss.on("connection", (socket: WebSocket, request: IncomingMessage) => {
 
     if (event.type !== "send") return;
 
-    const parsed = sendMessageSchema.safeParse({ conversationId: event.conversationId, content: event.content });
-    if (!parsed.success) {
-      send(socket, { type: "error", message: "Invalid message" });
-      return;
-    }
+    try {
+      const parsed = sendMessageSchema.safeParse({ conversationId: event.conversationId, content: event.content });
+      if (!parsed.success) {
+        send(socket, { type: "error", message: "Invalid message" });
+        return;
+      }
 
-    const access = await resolveConversationMembership({ userId, conversationId: parsed.data.conversationId });
-    if (!access.isMember) {
-      send(socket, { type: "error", message: "Not a member of this conversation" });
-      return;
-    }
+      const access = await resolveConversationMembership({ userId, conversationId: parsed.data.conversationId });
+      if (!access.isMember) {
+        send(socket, { type: "error", message: "Not a member of this conversation" });
+        return;
+      }
 
-    const message = await recordMessage(parsed.data.conversationId, userId, parsed.data.content);
-    const members = await prisma.conversationMember.findMany({ where: { conversationId: parsed.data.conversationId } });
-    members.forEach((member) =>
-      chatPubSub.publish(userChannel(member.userId), { type: "message", message } satisfies ChatServerEvent),
-    );
+      const message = await recordMessage(parsed.data.conversationId, userId, parsed.data.content);
+      const members = await prisma.conversationMember.findMany({ where: { conversationId: parsed.data.conversationId } });
+      members.forEach((member) =>
+        chatPubSub.publish(userChannel(member.userId), { type: "message", message } satisfies ChatServerEvent),
+      );
+    } catch (err) {
+      console.error(err);
+      send(socket, { type: "error", message: "Something went wrong" });
+    }
   });
 
   socket.on("close", unsubscribe);
