@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 import { MembersNotFoundError, NotFriendsError } from "../chat/conversations.js";
+import { FriendshipNotFoundError } from "../friends/friends.js";
 
 /** Global Express error-handling middleware. Must be mounted last, after all routes. */
 export function errorHandler(err: unknown, _req: Request, res: Response, _next: NextFunction): void {
@@ -9,6 +10,11 @@ export function errorHandler(err: unknown, _req: Request, res: Response, _next: 
   }
 
   if (err instanceof MembersNotFoundError) {
+    res.status(404).json({ error: err.message });
+    return;
+  }
+
+  if (err instanceof FriendshipNotFoundError) {
     res.status(404).json({ error: err.message });
     return;
   }
