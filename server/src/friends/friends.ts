@@ -10,11 +10,9 @@ export class FriendshipNotFoundError extends Error {
 
 export async function removeFriend(userId: string, friendId: string): Promise<void> {
   const [userAId, userBId] = orderedPair(userId, friendId);
-  const friendship = await prisma.friendship.findUnique({ where: { userAId_userBId: { userAId, userBId } } });
-  if (!friendship) throw new FriendshipNotFoundError("You're not friends with this user");
 
-  await prisma.$transaction([
-    prisma.friendship.delete({ where: { id: friendship.id } }),
+  const [{ count }] = await prisma.$transaction([
+    prisma.friendship.deleteMany({ where: { userAId, userBId } }),
     prisma.friendRequest.deleteMany({
       where: {
         OR: [
@@ -24,4 +22,6 @@ export async function removeFriend(userId: string, friendId: string): Promise<vo
       },
     }),
   ]);
+
+  if (count === 0) throw new FriendshipNotFoundError("You're not friends with this user");
 }
