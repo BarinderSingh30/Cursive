@@ -11,6 +11,7 @@ function makeConversation(overrides: Partial<ConversationSummary> = {}): Convers
     lastMessage: "hey",
     lastMessageAt: new Date().toISOString(),
     unreadCount: 0,
+    canSend: true,
     ...overrides,
   };
 }

@@ -64,7 +64,11 @@ export function ChatPage() {
               loading={loadingByConversation[activeId] ?? false}
               hasMore={hasMoreByConversation[activeId] ?? true}
             />
-            <MessageInput onSend={(content) => sendMessage(activeId, content)} onTyping={() => notifyTyping(activeId)} />
+            <MessageInput
+              onSend={(content) => sendMessage(activeId, content)}
+              onTyping={() => notifyTyping(activeId)}
+              disabled={conversations.find((c) => c.id === activeId)?.canSend === false}
+            />
           </>
         ) : (
           <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "#868e96" }}>

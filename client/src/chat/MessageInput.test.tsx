@@ -37,4 +37,18 @@ describe("MessageInput", () => {
 
     expect(onSend).not.toHaveBeenCalled();
   });
+
+  it("renders a disabled note instead of the input when disabled is true", () => {
+    render(<MessageInput onSend={vi.fn()} disabled />);
+
+    expect(screen.queryByPlaceholderText("Type a message…")).not.toBeInTheDocument();
+    expect(screen.getByText(/no longer friends/i)).toBeInTheDocument();
+  });
+
+  it("renders the input as usual when disabled is false or omitted", () => {
+    render(<MessageInput onSend={vi.fn()} />);
+
+    expect(screen.getByPlaceholderText("Type a message…")).toBeInTheDocument();
+    expect(screen.queryByText(/no longer friends/i)).not.toBeInTheDocument();
+  });
 });

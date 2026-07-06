@@ -3,6 +3,7 @@ import type { AddressInfo } from "node:net";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import WebSocket from "ws";
 import { prisma } from "../db/prisma.js";
+import { orderedPair } from "../db/orderedPair.js";
 import { mintConnectionTicket } from "../authorization/connectionTicket.js";
 import { chatWss } from "./wsGateway.js";
 
@@ -43,6 +44,8 @@ describe("chat WebSocket gateway", () => {
   it("delivers a sent message to every other member of the conversation", async () => {
     const alice = await prisma.user.create({ data: { email: "alice@chat-ws-test.local", emailVerified: true } });
     const bob = await prisma.user.create({ data: { email: "bob@chat-ws-test.local", emailVerified: true } });
+    const [userAId, userBId] = orderedPair(alice.id, bob.id);
+    await prisma.friendship.create({ data: { userAId, userBId } });
     const conversation = await prisma.conversation.create({
       data: {
         isGroup: false,
@@ -79,6 +82,28 @@ describe("chat WebSocket gateway", () => {
     expect(stored).toHaveLength(0);
 
     eveSocket.close();
+  });
+
+  it("rejects a send between conversation members who are no longer friends, and never persists it", async () => {
+    const alice = await prisma.user.create({ data: { email: "alice3@chat-ws-test.local", emailVerified: true } });
+    const bob = await prisma.user.create({ data: { email: "bob3@chat-ws-test.local", emailVerified: true } });
+    const conversation = await prisma.conversation.create({
+      data: {
+        isGroup: false,
+        dmKey: `${alice.id}:${bob.id}`,
+        members: { create: [{ userId: alice.id }, { userId: bob.id }] },
+      },
+    });
+
+    const aliceSocket = await connect(mintConnectionTicket({ purpose: "chat", userId: alice.id }));
+    aliceSocket.send(JSON.stringify({ type: "send", conversationId: conversation.id, content: "still here?" }));
+    const received = await nextMessage(aliceSocket);
+
+    expect(received.type).toBe("error");
+    const stored = await prisma.message.findMany({ where: { conversationId: conversation.id } });
+    expect(stored).toHaveLength(0);
+
+    aliceSocket.close();
   });
 
   it("rejects a connection with an invalid ticket", async () => {

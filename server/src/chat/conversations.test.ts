@@ -6,6 +6,7 @@ import {
   NotFriendsError,
   createGroupConversation,
   findOrCreateDm,
+  getConversationSummary,
   listConversationsForUser,
   markConversationRead,
   recordMessage,
@@ -88,6 +89,39 @@ describe("createGroupConversation", () => {
     await expect(
       createGroupConversation(alice.id, "Study group", ["nobody@chat-conv-test.local"]),
     ).rejects.toBeInstanceOf(MembersNotFoundError);
+  });
+});
+
+describe("canSend on ConversationSummary", () => {
+  it("is true for a DM between current friends", async () => {
+    const alice = await makeUser("alice8@chat-conv-test.local");
+    const bob = await makeUser("bob8@chat-conv-test.local");
+    await makeFriends(alice.id, bob.id);
+    const { conversation } = await findOrCreateDm(alice.id, bob.id);
+
+    const summary = await getConversationSummary(conversation.id, alice.id);
+    expect(summary.canSend).toBe(true);
+  });
+
+  it("is false for a DM once the two are no longer friends", async () => {
+    const alice = await makeUser("alice9@chat-conv-test.local");
+    const bob = await makeUser("bob9@chat-conv-test.local");
+    await makeFriends(alice.id, bob.id);
+    const { conversation } = await findOrCreateDm(alice.id, bob.id);
+    await prisma.friendship.deleteMany({ where: { OR: [{ userAId: alice.id }, { userBId: alice.id }] } });
+
+    const summary = await getConversationSummary(conversation.id, alice.id);
+    expect(summary.canSend).toBe(false);
+  });
+
+  it("is true for a group conversation regardless of friendship", async () => {
+    const alice = await makeUser("alice10@chat-conv-test.local");
+    const bob = await makeUser("bob10@chat-conv-test.local");
+    await makeFriends(alice.id, bob.id);
+    const group = await createGroupConversation(alice.id, "Study group", [bob.email]);
+
+    const summary = await getConversationSummary(group.id, alice.id);
+    expect(summary.canSend).toBe(true);
   });
 });
 

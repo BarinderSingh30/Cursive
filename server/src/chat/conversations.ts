@@ -18,6 +18,16 @@ export class MembersNotFoundError extends Error {
   }
 }
 
+/** True for groups, and for DMs (a conversation with exactly one "other" member) only while the two are still friends. */
+export async function canSendInConversation(
+  conversation: { isGroup: boolean },
+  otherMemberUserId: string | undefined,
+  userId: string,
+): Promise<boolean> {
+  if (conversation.isGroup || !otherMemberUserId) return true;
+  return areFriends(userId, otherMemberUserId);
+}
+
 async function areFriends(userAId: string, userBId: string): Promise<boolean> {
   const [a, b] = orderedPair(userAId, userBId);
   const friendship = await prisma.friendship.findUnique({ where: { userAId_userBId: { userAId: a, userBId: b } } });
@@ -98,6 +108,8 @@ async function summarizeConversation(conversationId: string, userId: string): Pr
     where: { conversationId, createdAt: { gt: membership.lastReadAt }, senderId: { not: userId } },
   });
 
+  const canSend = await canSendInConversation(conversation, otherMember?.userId, userId);
+
   return {
     id: conversation.id,
     isGroup: conversation.isGroup,
@@ -105,6 +117,7 @@ async function summarizeConversation(conversationId: string, userId: string): Pr
     lastMessage: lastMessage?.content ?? null,
     lastMessageAt: lastMessage?.createdAt.toISOString() ?? null,
     unreadCount,
+    canSend,
   };
 }
 

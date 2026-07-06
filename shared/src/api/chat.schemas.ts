@@ -34,5 +34,6 @@ export const conversationSummarySchema = z.object({
   lastMessage: z.string().nullable(),
   lastMessageAt: z.string().nullable(),
   unreadCount: z.number(),
+  canSend: z.boolean(),
 });
 export type ConversationSummary = z.infer<typeof conversationSummarySchema>;

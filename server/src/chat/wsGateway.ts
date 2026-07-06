@@ -83,6 +83,10 @@ chatWss.on("connection", (socket: WebSocket, request: IncomingMessage) => {
         send(socket, { type: "error", message: "Not a member of this conversation" });
         return;
       }
+      if (!access.canSend) {
+        send(socket, { type: "error", message: "You're no longer friends with this person" });
+        return;
+      }
 
       const message = await recordMessage(parsed.data.conversationId, userId, parsed.data.content);
       const members = await prisma.conversationMember.findMany({ where: { conversationId: parsed.data.conversationId } });
