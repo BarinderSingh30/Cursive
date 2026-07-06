@@ -2,9 +2,16 @@ import { Link } from "react-router-dom";
 import { useFriends } from "./useFriends.js";
 import { FriendRequestList } from "./FriendRequestList.js";
 import { AddFriendDialog } from "./AddFriendDialog.js";
+import { FriendMenu } from "./FriendMenu.js";
 
 export function FriendsPage() {
-  const { friends, requests, loading, sendRequest, acceptRequest, declineRequest } = useFriends();
+  const { friends, requests, loading, sendRequest, acceptRequest, declineRequest, removeFriend } = useFriends();
+
+  const handleRemove = (friendId: string, label: string) => {
+    if (window.confirm(`Remove ${label} as a friend?`)) {
+      removeFriend(friendId);
+    }
+  };
 
   return (
     <div style={{ maxWidth: 480, margin: "40px auto", padding: "0 16px" }}>
@@ -26,8 +33,12 @@ export function FriendsPage() {
           ) : (
             <ul style={{ listStyle: "none", padding: 0 }}>
               {friends.map((f) => (
-                <li key={f.id} style={{ padding: "6px 0" }}>
-                  {f.name ?? f.email}
+                <li
+                  key={f.id}
+                  style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0" }}
+                >
+                  <span>{f.name ?? f.email}</span>
+                  <FriendMenu onRemove={() => handleRemove(f.id, f.name ?? f.email)} />
                 </li>
               ))}
             </ul>
