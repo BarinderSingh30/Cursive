@@ -2,10 +2,13 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import type { BoardRole } from "@cursive/shared";
 import { signOut, useSession } from "../auth/authClient.js";
+import { useFriends } from "../friends/useFriends.js";
+import { useHasUnreadMessages } from "../chat/useHasUnreadMessages.js";
 import { useBoards } from "./useBoards.js";
 import { BoardCard } from "./BoardCard.js";
 import { CreateBoardDialog } from "./CreateBoardDialog.js";
 import { NotificationsButton } from "./NotificationsButton.js";
+import { UnreadDot } from "./UnreadDot.js";
 
 const TABS: { role: BoardRole; label: string; emptyMessage: string }[] = [
   { role: "owner", label: "My boards", emptyMessage: "No boards yet — create your first one below." },
@@ -16,6 +19,8 @@ const TABS: { role: BoardRole; label: string; emptyMessage: string }[] = [
 export function DashboardPage() {
   const { data: session } = useSession();
   const { boards, loading, createBoard, deleteBoard, refresh: refreshBoards } = useBoards();
+  const { requests } = useFriends();
+  const hasUnreadMessages = useHasUnreadMessages();
   const [activeTab, setActiveTab] = useState<BoardRole>("owner");
 
   const activeBoards = boards.filter((b) => b.role === activeTab);
@@ -28,8 +33,14 @@ export function DashboardPage() {
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
           <span style={{ fontSize: 14, color: "#868e96" }}>{session?.user.name || session?.user.email}</span>
           <NotificationsButton onAccepted={refreshBoards} />
-          <Link to="/friends">Friends</Link>
-          <Link to="/messages">Messages</Link>
+          <Link to="/friends" style={{ position: "relative" }}>
+            Friends
+            <UnreadDot show={requests.length > 0} />
+          </Link>
+          <Link to="/messages" style={{ position: "relative" }}>
+            Messages
+            <UnreadDot show={hasUnreadMessages} />
+          </Link>
           <button type="button" onClick={() => signOut().then(() => (window.location.href = "/login"))}>
             Log out
           </button>
