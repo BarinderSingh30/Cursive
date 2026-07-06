@@ -4,7 +4,7 @@ import { api } from "../api/client.js";
 import { useFriends } from "./useFriends.js";
 
 vi.mock("../api/client.js", () => ({
-  api: { get: vi.fn(), post: vi.fn() },
+  api: { get: vi.fn(), post: vi.fn(), delete: vi.fn() },
 }));
 
 function mockApiGet(routes: Record<string, unknown>) {
@@ -77,5 +77,24 @@ describe("useFriends polling", () => {
     });
 
     expect((api.get as ReturnType<typeof vi.fn>).mock.calls.length).toBe(callsBeforeUnmount);
+  });
+});
+
+describe("useFriends removeFriend", () => {
+  it("calls api.delete with the friend's id and refetches friends and requests", async () => {
+    mockApiGet({ "/api/friends": [{ id: "f1", email: "alice@example.com", name: "Alice" }], "/api/friends/requests": [] });
+    (api.delete as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+
+    const { result } = renderHook(() => useFriends());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    const getCallsBefore = (api.get as ReturnType<typeof vi.fn>).mock.calls.length;
+
+    await act(async () => {
+      await result.current.removeFriend("f1");
+    });
+
+    expect(api.delete).toHaveBeenCalledWith("/api/friends/f1");
+    expect((api.get as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(getCallsBefore);
   });
 });

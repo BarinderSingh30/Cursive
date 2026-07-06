@@ -48,5 +48,13 @@ export function useFriends() {
     [refresh],
   );
 
-  return { friends, requests, loading, sendRequest, acceptRequest, declineRequest };
+  const removeFriend = useCallback(
+    async (friendId: string) => {
+      await api.delete(`/api/friends/${friendId}`);
+      await refresh();
+    },
+    [refresh],
+  );
+
+  return { friends, requests, loading, sendRequest, acceptRequest, declineRequest, removeFriend };
 }
