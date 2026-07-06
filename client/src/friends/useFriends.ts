@@ -2,13 +2,14 @@ import { useCallback, useEffect, useState } from "react";
 import type { FriendRequestSummary, FriendSummary } from "@cursive/shared";
 import { api } from "../api/client.js";
 
+const FRIENDS_POLL_INTERVAL_MS = 5000;
+
 export function useFriends() {
   const [friends, setFriends] = useState<FriendSummary[]>([]);
   const [requests, setRequests] = useState<FriendRequestSummary[]>([]);
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
-    setLoading(true);
     const [friendsData, requestsData] = await Promise.all([
       api.get<FriendSummary[]>("/api/friends"),
       api.get<FriendRequestSummary[]>("/api/friends/requests"),
@@ -20,6 +21,11 @@ export function useFriends() {
 
   useEffect(() => {
     refresh();
+  }, [refresh]);
+
+  useEffect(() => {
+    const interval = setInterval(refresh, FRIENDS_POLL_INTERVAL_MS);
+    return () => clearInterval(interval);
   }, [refresh]);
 
   const sendRequest = useCallback(async (email: string) => {
