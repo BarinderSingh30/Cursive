@@ -3,6 +3,8 @@ import { sendFriendRequestSchema, type FriendRequestSummary, type FriendSummary 
 import { prisma } from "../db/prisma.js";
 import { requireAuth } from "../authorization/requireAuth.js";
 import { orderedPair } from "../db/orderedPair.js";
+import { asyncHandler } from "../middleware/asyncHandler.js";
+import { removeFriend } from "../friends/friends.js";
 
 export const friendsRouter = Router();
 
@@ -109,3 +111,12 @@ friendsRouter.get("/", async (req, res) => {
   });
   res.json(body);
 });
+
+friendsRouter.delete(
+  "/:friendId",
+  asyncHandler(async (req, res) => {
+    const userId = res.locals.userId as string;
+    await removeFriend(userId, req.params.friendId);
+    res.status(204).send();
+  }),
+);
