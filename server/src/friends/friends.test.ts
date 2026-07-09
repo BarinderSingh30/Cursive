@@ -12,9 +12,10 @@ async function makeFriends(aId: string, bId: string) {
   await prisma.friendship.create({ data: { userAId, userBId } });
 }
 
+// Scoped to this file's own test users only — deleting them cascades away
+// their FriendRequest/Friendship rows. A bare deleteMany() on those tables
+// would wipe every friendship in the whole database, test-created or not.
 afterEach(async () => {
-  await prisma.friendRequest.deleteMany({});
-  await prisma.friendship.deleteMany({});
   await prisma.user.deleteMany({ where: { email: { contains: "@remove-friend-test.local" } } });
 });
 

@@ -8,12 +8,14 @@ async function makeFriends(aId: string, bId: string) {
   await prisma.friendship.create({ data: { userAId, userBId } });
 }
 
+const TEST_USER_FILTER = { email: { contains: "@chat-auth-test.local" } };
+
+// Scoped to this file's own test users only (via cascade on delete) — a
+// bare deleteMany() here would wipe every Message/Conversation/Friendship
+// in the whole database, test-created or not.
 afterEach(async () => {
-  await prisma.message.deleteMany();
-  await prisma.conversationMember.deleteMany();
-  await prisma.conversation.deleteMany();
-  await prisma.friendship.deleteMany();
-  await prisma.user.deleteMany({ where: { email: { contains: "@chat-auth-test.local" } } });
+  await prisma.conversation.deleteMany({ where: { members: { some: { user: TEST_USER_FILTER } } } });
+  await prisma.user.deleteMany({ where: TEST_USER_FILTER });
 });
 
 describe("resolveConversationMembership", () => {
