@@ -10,6 +10,7 @@ export interface TypingUser {
 
 const TYPING_THROTTLE_MS = 2000;
 const TYPING_EXPIRY_MS = 8000;
+const RECONNECT_DELAY_MS = 2000;
 
 export function useChatSocket() {
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
@@ -66,13 +67,18 @@ export function useChatSocket() {
   useEffect(() => {
     let cancelled = false;
     let socket: WebSocket | undefined;
+    let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
 
-    (async () => {
+    const connect = async () => {
       const { ticket } = await api.get<{ ticket: string }>("/api/chat/ticket");
       if (cancelled) return;
 
       socket = new WebSocket(`${env.CHAT_SOCKET_URL}?ticket=${ticket}`);
       socketRef.current = socket;
+
+      socket.onopen = () => {
+        refreshConversations();
+      };
 
       socket.onmessage = (event) => {
         const data: ChatServerEvent = JSON.parse(event.data);
@@ -98,10 +104,21 @@ export function useChatSocket() {
           refreshConversations();
         }
       };
-    })();
+
+      // The server can drop a connection for reasons that have nothing to do
+      // with the user (a deploy, a restart) — reconnect instead of leaving
+      // sendMessage silently writing into a dead socket until a page reload.
+      socket.onclose = () => {
+        if (cancelled) return;
+        reconnectTimer = setTimeout(connect, RECONNECT_DELAY_MS);
+      };
+    };
+
+    connect();
 
     return () => {
       cancelled = true;
+      clearTimeout(reconnectTimer);
       socket?.close();
     };
   }, [refreshConversations, handleTypingEvent, clearTypingUser, applyMessageDeleted, applyHistoryCleared]);

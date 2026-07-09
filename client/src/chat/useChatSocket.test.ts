@@ -100,6 +100,32 @@ describe("useChatSocket typing", () => {
   });
 });
 
+describe("useChatSocket reconnection", () => {
+  it("opens a new socket after the connection drops, so sending works again", async () => {
+    mockApiGet({ "/api/chat/conversations": [], "/api/chat/ticket": { ticket: "t" } });
+
+    const { result } = renderHook(() => useChatSocket());
+    await waitFor(() => expect(MockWebSocket.instances).toHaveLength(1));
+
+    vi.useFakeTimers();
+    MockWebSocket.instances[0].emitClose();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000);
+    });
+    vi.useRealTimers();
+
+    await waitFor(() => expect(MockWebSocket.instances).toHaveLength(2));
+
+    act(() => {
+      result.current.sendMessage("conv-1", "hello again");
+    });
+
+    expect(MockWebSocket.instances[1].sent).toHaveLength(1);
+    expect(MockWebSocket.instances[0].sent).toHaveLength(0);
+  });
+});
+
 describe("useChatSocket pagination", () => {
   it("loads the latest page on first call with no cursor", async () => {
     mockApiGet({

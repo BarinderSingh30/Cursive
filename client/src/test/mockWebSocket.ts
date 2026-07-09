@@ -23,6 +23,12 @@ export class MockWebSocket {
     this.onclose?.();
   }
 
+  /** Simulates the server dropping the connection (e.g. a restart), distinct from a deliberate client close. */
+  emitClose(): void {
+    this.readyState = 3;
+    this.onclose?.();
+  }
+
   emitMessage(data: unknown): void {
     this.onmessage?.({ data: JSON.stringify(data) });
   }

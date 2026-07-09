@@ -6,6 +6,8 @@ import { prisma } from "../db/prisma.js";
 import { orderedPair } from "../db/orderedPair.js";
 import { mintConnectionTicket } from "../authorization/connectionTicket.js";
 import { chatWss } from "./wsGateway.js";
+import { clearConversationHistory, recordMessage, visibleMessagesWhere } from "./conversations.js";
+import { resolveConversationMembership } from "./authorization.js";
 
 let server: ReturnType<typeof createServer>;
 let baseUrl: string;
@@ -104,6 +106,60 @@ describe("chat WebSocket gateway", () => {
     expect(stored).toHaveLength(0);
 
     aliceSocket.close();
+  });
+
+  it("delivers a message sent after the sender cleared history", async () => {
+    const alice = await prisma.user.create({ data: { email: "alice-repro@chat-ws-test.local", emailVerified: true } });
+    const bob = await prisma.user.create({ data: { email: "bob-repro@chat-ws-test.local", emailVerified: true } });
+    const [userAId, userBId] = orderedPair(alice.id, bob.id);
+    await prisma.friendship.create({ data: { userAId, userBId } });
+    const conversation = await prisma.conversation.create({
+      data: {
+        isGroup: false,
+        dmKey: `${alice.id}:${bob.id}`,
+        members: { create: [{ userId: alice.id }, { userId: bob.id }] },
+      },
+    });
+    await recordMessage(conversation.id, bob.id, "old message");
+    await clearConversationHistory(alice.id, conversation.id);
+
+    const aliceSocket = await connect(mintConnectionTicket({ purpose: "chat", userId: alice.id }));
+    const bobSocket = await connect(mintConnectionTicket({ purpose: "chat", userId: bob.id }));
+
+    aliceSocket.send(JSON.stringify({ type: "send", conversationId: conversation.id, content: "new message" }));
+    const received = await nextMessage(bobSocket);
+
+    expect(received).toMatchObject({ type: "message", message: { content: "new message" } });
+
+    aliceSocket.close();
+    bobSocket.close();
+  });
+
+  it("the messages route's visibility query still returns a message sent after clearing", async () => {
+    const alice = await prisma.user.create({ data: { email: "alice-repro2@chat-ws-test.local", emailVerified: true } });
+    const bob = await prisma.user.create({ data: { email: "bob-repro2@chat-ws-test.local", emailVerified: true } });
+    const [userAId, userBId] = orderedPair(alice.id, bob.id);
+    await prisma.friendship.create({ data: { userAId, userBId } });
+    const conversation = await prisma.conversation.create({
+      data: {
+        isGroup: false,
+        dmKey: `${alice.id}:${bob.id}`,
+        members: { create: [{ userId: alice.id }, { userId: bob.id }] },
+      },
+    });
+    await recordMessage(conversation.id, bob.id, "old message");
+    await clearConversationHistory(alice.id, conversation.id);
+    const newMsg = await recordMessage(conversation.id, bob.id, "new message");
+
+    const access = await resolveConversationMembership({ userId: alice.id, conversationId: conversation.id });
+    const messages = await prisma.message.findMany({
+      where: { conversationId: conversation.id, ...visibleMessagesWhere(alice.id, access.clearedAt) },
+      orderBy: { createdAt: "desc" },
+      take: 30,
+    });
+
+    expect(messages.map((m) => m.id)).toContain(newMsg.id);
+    expect(messages.map((m) => m.content)).not.toContain("old message");
   });
 
   it("rejects a connection with an invalid ticket", async () => {
