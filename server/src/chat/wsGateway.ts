@@ -22,6 +22,13 @@ export function notifyConversationCreated(memberUserIds: string[], event: ChatSe
   memberUserIds.forEach((userId) => chatPubSub.publish(userChannel(userId), event));
 }
 
+/** Pushes an event to every open socket belonging to this one user — used so
+ * that clear-history/delete-message (per-user actions) stay in sync across
+ * that user's own multiple open tabs/devices, without notifying anyone else. */
+export function notifyUser(userId: string, event: ChatServerEvent): void {
+  chatPubSub.publish(userChannel(userId), event);
+}
+
 export const chatWss = new WebSocketServer({ noServer: true });
 
 chatWss.on("connection", (socket: WebSocket, request: IncomingMessage) => {

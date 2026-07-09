@@ -31,6 +31,7 @@ model User {
   receivedBoardInvites BoardInvite[]   @relation("BoardInviteReceiver")
   conversationMemberships ConversationMember[]
   sentMessages             Message[]
+  messageDeletions         MessageDeletion[]
 }
 
 model Session {
@@ -175,11 +176,13 @@ model Conversation {
 }
 
 model ConversationMember {
-  id             String   @id @default(cuid())
+  id             String    @id @default(cuid())
   conversationId String
   userId         String
-  lastReadAt     DateTime @default(now())
-  joinedAt       DateTime @default(now())
+  lastReadAt     DateTime  @default(now())
+  joinedAt       DateTime  @default(now())
+  /// Messages created at or before this are hidden from this member's view (they cleared history).
+  clearedAt      DateTime?
 
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -194,6 +197,20 @@ model Message {
   content        String
   createdAt      DateTime @default(now())
 
-  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  sender       User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  conversation Conversation      @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User              @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  deletions    MessageDeletion[]
+}
+
+/// One row per (message, user) the user has deleted for themselves. Never affects other members.
+model MessageDeletion {
+  id        String   @id @default(cuid())
+  messageId String
+  userId    String
+  createdAt DateTime @default(now())
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId])
 }

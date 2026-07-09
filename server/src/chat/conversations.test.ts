@@ -4,7 +4,9 @@ import { orderedPair } from "../db/orderedPair.js";
 import {
   MembersNotFoundError,
   NotFriendsError,
+  clearConversationHistory,
   createGroupConversation,
+  deleteMessageForUser,
   findOrCreateDm,
   getConversationSummary,
   listConversationsForUser,
@@ -122,6 +124,69 @@ describe("canSend on ConversationSummary", () => {
 
     const summary = await getConversationSummary(group.id, alice.id);
     expect(summary.canSend).toBe(true);
+  });
+});
+
+describe("clearConversationHistory", () => {
+  it("hides messages sent before clearing from the summary and unread count, but a later message shows up", async () => {
+    const alice = await makeUser("alice11@chat-conv-test.local");
+    const bob = await makeUser("bob11@chat-conv-test.local");
+    await makeFriends(alice.id, bob.id);
+    const { conversation } = await findOrCreateDm(alice.id, bob.id);
+    await recordMessage(conversation.id, bob.id, "old message");
+
+    await clearConversationHistory(alice.id, conversation.id);
+
+    const summaryAfterClear = await getConversationSummary(conversation.id, alice.id);
+    expect(summaryAfterClear.lastMessage).toBeNull();
+    expect(summaryAfterClear.unreadCount).toBe(0);
+
+    await recordMessage(conversation.id, bob.id, "new message");
+    const summaryAfterNewMessage = await getConversationSummary(conversation.id, alice.id);
+    expect(summaryAfterNewMessage.lastMessage).toBe("new message");
+  });
+
+  it("does not affect the other member's view", async () => {
+    const alice = await makeUser("alice12@chat-conv-test.local");
+    const bob = await makeUser("bob12@chat-conv-test.local");
+    await makeFriends(alice.id, bob.id);
+    const { conversation } = await findOrCreateDm(alice.id, bob.id);
+    await recordMessage(conversation.id, bob.id, "hello alice");
+
+    await clearConversationHistory(alice.id, conversation.id);
+
+    const bobsSummary = await getConversationSummary(conversation.id, bob.id);
+    expect(bobsSummary.lastMessage).toBe("hello alice");
+  });
+});
+
+describe("deleteMessageForUser", () => {
+  it("hides a specific message from the deleting user's summary but not the other member's", async () => {
+    const alice = await makeUser("alice13@chat-conv-test.local");
+    const bob = await makeUser("bob13@chat-conv-test.local");
+    await makeFriends(alice.id, bob.id);
+    const { conversation } = await findOrCreateDm(alice.id, bob.id);
+    const message = await recordMessage(conversation.id, bob.id, "delete me");
+
+    await deleteMessageForUser(alice.id, message.id);
+
+    const alicesSummary = await getConversationSummary(conversation.id, alice.id);
+    expect(alicesSummary.lastMessage).toBeNull();
+    expect(alicesSummary.unreadCount).toBe(0);
+
+    const bobsSummary = await getConversationSummary(conversation.id, bob.id);
+    expect(bobsSummary.lastMessage).toBe("delete me");
+  });
+
+  it("is idempotent when called twice for the same message", async () => {
+    const alice = await makeUser("alice14@chat-conv-test.local");
+    const bob = await makeUser("bob14@chat-conv-test.local");
+    await makeFriends(alice.id, bob.id);
+    const { conversation } = await findOrCreateDm(alice.id, bob.id);
+    const message = await recordMessage(conversation.id, bob.id, "hi");
+
+    await deleteMessageForUser(alice.id, message.id);
+    await expect(deleteMessageForUser(alice.id, message.id)).resolves.not.toThrow();
   });
 });
 

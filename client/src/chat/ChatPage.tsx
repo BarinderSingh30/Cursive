@@ -8,6 +8,7 @@ import { FriendSearch } from "./FriendSearch.js";
 import { MessageList } from "./MessageList.js";
 import { MessageInput } from "./MessageInput.js";
 import { CreateGroupDialog } from "./CreateGroupDialog.js";
+import { ConversationMenu } from "./ConversationMenu.js";
 
 export function ChatPage() {
   const {
@@ -21,6 +22,8 @@ export function ChatPage() {
     notifyTyping,
     markRead,
     refreshConversations,
+    deleteMessage,
+    clearHistory,
   } = useChatSocket();
   const { friends } = useFriends();
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -57,12 +60,25 @@ export function ChatPage() {
       <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
         {activeId ? (
           <>
+            <div
+              style={{
+                padding: 12,
+                borderBottom: "1px solid #e0e0e0",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <strong>{conversations.find((c) => c.id === activeId)?.displayName}</strong>
+              <ConversationMenu onClearHistory={() => clearHistory(activeId)} />
+            </div>
             <MessageList
               messages={messagesByConversation[activeId] ?? []}
               typingUsers={typingByConversation[activeId] ?? []}
               onReachTop={() => loadMore(activeId)}
               loading={loadingByConversation[activeId] ?? false}
               hasMore={hasMoreByConversation[activeId] ?? true}
+              onDeleteMessage={(messageId) => deleteMessage(activeId, messageId)}
             />
             <MessageInput
               onSend={(content) => sendMessage(activeId, content)}

@@ -34,6 +34,19 @@ async function areFriends(userAId: string, userBId: string): Promise<boolean> {
   return friendship !== null;
 }
 
+/**
+ * The single "is this message visible to this user" rule: not before their
+ * clear-history cutoff, and not individually deleted by them. Used at every
+ * read site (paginated fetch, last-message preview, unread count) so the
+ * rule can't drift between them.
+ */
+export function visibleMessagesWhere(userId: string, clearedAt: Date | null) {
+  return {
+    ...(clearedAt ? { createdAt: { gt: clearedAt } } : {}),
+    deletions: { none: { userId } },
+  };
+}
+
 /** Finds the existing DM with this friend, or creates it. Never two DMs between the same pair. */
 export async function findOrCreateDm(
   selfId: string,
@@ -93,9 +106,13 @@ async function summarizeConversation(conversationId: string, userId: string): Pr
   const membership = await prisma.conversationMember.findUniqueOrThrow({
     where: { conversationId_userId: { conversationId, userId } },
   });
+  const visibleWhere = visibleMessagesWhere(userId, membership.clearedAt);
   const conversation = await prisma.conversation.findUniqueOrThrow({
     where: { id: conversationId },
-    include: { members: { include: { user: true } }, messages: { orderBy: { createdAt: "desc" }, take: 1 } },
+    include: {
+      members: { include: { user: true } },
+      messages: { where: visibleWhere, orderBy: { createdAt: "desc" }, take: 1 },
+    },
   });
 
   const lastMessage = conversation.messages[0] ?? null;
@@ -105,7 +122,11 @@ async function summarizeConversation(conversationId: string, userId: string): Pr
     : otherMember?.user.name ?? otherMember?.user.email ?? "Unknown";
 
   const unreadCount = await prisma.message.count({
-    where: { conversationId, createdAt: { gt: membership.lastReadAt }, senderId: { not: userId } },
+    where: {
+      conversationId,
+      senderId: { not: userId },
+      AND: [{ createdAt: { gt: membership.lastReadAt } }, visibleWhere],
+    },
   });
 
   const canSend = await canSendInConversation(conversation, otherMember?.userId, userId);
@@ -140,6 +161,23 @@ export async function markConversationRead(userId: string, conversationId: strin
   await prisma.conversationMember.update({
     where: { conversationId_userId: { conversationId, userId } },
     data: { lastReadAt: new Date() },
+  });
+}
+
+/** Hides this conversation's history, up to now, from this user only. Never affects other members. */
+export async function clearConversationHistory(userId: string, conversationId: string): Promise<void> {
+  await prisma.conversationMember.update({
+    where: { conversationId_userId: { conversationId, userId } },
+    data: { clearedAt: new Date() },
+  });
+}
+
+/** Hides a single message from this user only. Idempotent. Never affects other members. */
+export async function deleteMessageForUser(userId: string, messageId: string): Promise<void> {
+  await prisma.messageDeletion.upsert({
+    where: { messageId_userId: { messageId, userId } },
+    create: { messageId, userId },
+    update: {},
   });
 }
 

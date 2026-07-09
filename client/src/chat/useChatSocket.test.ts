@@ -5,7 +5,7 @@ import { MockWebSocket } from "../test/mockWebSocket.js";
 import { useChatSocket } from "./useChatSocket.js";
 
 vi.mock("../api/client.js", () => ({
-  api: { get: vi.fn(), post: vi.fn() },
+  api: { get: vi.fn(), post: vi.fn(), delete: vi.fn() },
 }));
 
 function mockApiGet(routes: Record<string, unknown>) {
@@ -173,5 +173,159 @@ describe("useChatSocket pagination", () => {
     });
 
     expect(result.current.messagesByConversation["conv-1"].map((m) => m.id)).toEqual(["m1", "m2"]);
+  });
+});
+
+describe("useChatSocket deleteMessage", () => {
+  it("calls the delete endpoint and removes the message from local state", async () => {
+    mockApiGet({
+      "/api/chat/conversations": [],
+      "/api/chat/ticket": { ticket: "t" },
+      "/api/chat/conversations/conv-1/messages": [
+        {
+          id: "m1",
+          conversationId: "conv-1",
+          senderId: "bob",
+          senderName: "Bob",
+          content: "c1",
+          createdAt: "2026-01-01T00:00:00.000Z",
+        },
+      ],
+    });
+    (api.delete as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+
+    const { result } = renderHook(() => useChatSocket());
+    await waitFor(() => expect(MockWebSocket.instances).toHaveLength(1));
+
+    await act(async () => {
+      await result.current.loadMore("conv-1");
+    });
+    expect(result.current.messagesByConversation["conv-1"].map((m) => m.id)).toEqual(["m1"]);
+
+    await act(async () => {
+      await result.current.deleteMessage("conv-1", "m1");
+    });
+
+    expect(api.delete).toHaveBeenCalledWith("/api/chat/messages/m1");
+    expect(result.current.messagesByConversation["conv-1"]).toEqual([]);
+  });
+});
+
+describe("useChatSocket clearHistory", () => {
+  it("calls the clear endpoint, empties local messages, and refreshes conversations", async () => {
+    mockApiGet({
+      "/api/chat/conversations": [],
+      "/api/chat/ticket": { ticket: "t" },
+      "/api/chat/conversations/conv-1/messages": [
+        {
+          id: "m1",
+          conversationId: "conv-1",
+          senderId: "bob",
+          senderName: "Bob",
+          content: "c1",
+          createdAt: "2026-01-01T00:00:00.000Z",
+        },
+      ],
+    });
+    (api.post as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+
+    const { result } = renderHook(() => useChatSocket());
+    await waitFor(() => expect(MockWebSocket.instances).toHaveLength(1));
+
+    await act(async () => {
+      await result.current.loadMore("conv-1");
+    });
+    expect(result.current.messagesByConversation["conv-1"]).toHaveLength(1);
+
+    const callsBefore = (api.get as ReturnType<typeof vi.fn>).mock.calls.filter(
+      (c) => c[0] === "/api/chat/conversations",
+    ).length;
+
+    await act(async () => {
+      await result.current.clearHistory("conv-1");
+    });
+
+    expect(api.post).toHaveBeenCalledWith("/api/chat/conversations/conv-1/clear");
+    expect(result.current.messagesByConversation["conv-1"]).toEqual([]);
+    const callsAfter = (api.get as ReturnType<typeof vi.fn>).mock.calls.filter(
+      (c) => c[0] === "/api/chat/conversations",
+    ).length;
+    expect(callsAfter).toBeGreaterThan(callsBefore);
+  });
+});
+
+describe("useChatSocket remote message-deleted / history-cleared events", () => {
+  it("removes a message from local state when a message-deleted event arrives over the socket", async () => {
+    mockApiGet({
+      "/api/chat/conversations": [],
+      "/api/chat/ticket": { ticket: "t" },
+      "/api/chat/conversations/conv-1/messages": [
+        {
+          id: "m1",
+          conversationId: "conv-1",
+          senderId: "bob",
+          senderName: "Bob",
+          content: "c1",
+          createdAt: "2026-01-01T00:00:00.000Z",
+        },
+      ],
+    });
+
+    const { result } = renderHook(() => useChatSocket());
+    await waitFor(() => expect(MockWebSocket.instances).toHaveLength(1));
+    const socket = MockWebSocket.instances[0];
+
+    await act(async () => {
+      await result.current.loadMore("conv-1");
+    });
+    expect(result.current.messagesByConversation["conv-1"]).toHaveLength(1);
+
+    act(() => {
+      socket.emitMessage({ type: "message-deleted", conversationId: "conv-1", messageId: "m1" });
+    });
+
+    expect(result.current.messagesByConversation["conv-1"]).toEqual([]);
+  });
+
+  it("empties local messages and refreshes conversations when a history-cleared event arrives over the socket", async () => {
+    mockApiGet({
+      "/api/chat/conversations": [],
+      "/api/chat/ticket": { ticket: "t" },
+      "/api/chat/conversations/conv-1/messages": [
+        {
+          id: "m1",
+          conversationId: "conv-1",
+          senderId: "bob",
+          senderName: "Bob",
+          content: "c1",
+          createdAt: "2026-01-01T00:00:00.000Z",
+        },
+      ],
+    });
+
+    const { result } = renderHook(() => useChatSocket());
+    await waitFor(() => expect(MockWebSocket.instances).toHaveLength(1));
+    const socket = MockWebSocket.instances[0];
+
+    await act(async () => {
+      await result.current.loadMore("conv-1");
+    });
+    expect(result.current.messagesByConversation["conv-1"]).toHaveLength(1);
+
+    const callsBefore = (api.get as ReturnType<typeof vi.fn>).mock.calls.filter(
+      (c) => c[0] === "/api/chat/conversations",
+    ).length;
+
+    act(() => {
+      socket.emitMessage({ type: "history-cleared", conversationId: "conv-1" });
+    });
+
+    expect(result.current.messagesByConversation["conv-1"]).toEqual([]);
+    await waitFor(() => {
+      const callsAfter = (api.get as ReturnType<typeof vi.fn>).mock.calls.filter(
+        (c) => c[0] === "/api/chat/conversations",
+      ).length;
+      expect(callsAfter).toBeGreaterThan(callsBefore);
+    });
   });
 });

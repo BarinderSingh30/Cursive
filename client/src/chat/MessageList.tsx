@@ -13,6 +13,7 @@ interface Props {
   onReachTop?: () => void;
   loading?: boolean;
   hasMore?: boolean;
+  onDeleteMessage?: (messageId: string) => void;
 }
 
 function formatTypingText(users: TypingUser[]): string {
@@ -26,7 +27,14 @@ function formatTypingText(users: TypingUser[]): string {
 
 const SCROLL_TOP_THRESHOLD = 40;
 
-export function MessageList({ messages, typingUsers = [], onReachTop, loading = false, hasMore = true }: Props) {
+export function MessageList({
+  messages,
+  typingUsers = [],
+  onReachTop,
+  loading = false,
+  hasMore = true,
+  onDeleteMessage,
+}: Props) {
   const { data: session } = useSession();
   const containerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -63,18 +71,49 @@ export function MessageList({ messages, typingUsers = [], onReachTop, loading = 
       {messages.map((m) => {
         const isSelf = m.senderId === session?.user.id;
         return (
-          <div key={m.id} style={{ alignSelf: isSelf ? "flex-end" : "flex-start", maxWidth: "70%" }}>
-            {!isSelf && <div style={{ fontSize: 11, color: "#868e96" }}>{m.senderName ?? "Unknown"}</div>}
-            <div
-              style={{
-                background: isSelf ? "#1971c2" : "#f1f3f5",
-                color: isSelf ? "#fff" : "#1e1e1e",
-                borderRadius: 12,
-                padding: "8px 12px",
-              }}
-            >
-              {m.content}
+          <div
+            key={m.id}
+            style={{
+              alignSelf: isSelf ? "flex-end" : "flex-start",
+              maxWidth: "70%",
+              display: "flex",
+              alignItems: "flex-end",
+              gap: 4,
+              flexDirection: isSelf ? "row-reverse" : "row",
+            }}
+          >
+            <div>
+              {!isSelf && <div style={{ fontSize: 11, color: "#868e96" }}>{m.senderName ?? "Unknown"}</div>}
+              <div
+                style={{
+                  background: isSelf ? "#1971c2" : "#f1f3f5",
+                  color: isSelf ? "#fff" : "#1e1e1e",
+                  borderRadius: 12,
+                  padding: "8px 12px",
+                }}
+              >
+                {m.content}
+              </div>
             </div>
+            {onDeleteMessage && (
+              <button
+                type="button"
+                onClick={() => onDeleteMessage(m.id)}
+                aria-label="Delete message"
+                title="Delete message"
+                style={{
+                  border: "none",
+                  background: "transparent",
+                  cursor: "pointer",
+                  color: "#adb5bd",
+                  fontSize: 14,
+                  lineHeight: 1,
+                  padding: 2,
+                }}
+              >
+                ✕
+              </button>
+            )}
           </div>
         );
       })}

@@ -6,6 +6,8 @@ export interface ConversationAccessResult {
   lastReadAt: Date | null;
   /** False for a DM whose two members are no longer friends. Always true for groups. */
   canSend: boolean;
+  /** Messages at or before this are hidden from this user's view (they cleared history). */
+  clearedAt: Date | null;
 }
 
 /**
@@ -22,7 +24,7 @@ export async function resolveConversationMembership(params: {
   const membership = await prisma.conversationMember.findUnique({
     where: { conversationId_userId: { conversationId: params.conversationId, userId: params.userId } },
   });
-  if (!membership) return { isMember: false, lastReadAt: null, canSend: false };
+  if (!membership) return { isMember: false, lastReadAt: null, canSend: false, clearedAt: null };
 
   const conversation = await prisma.conversation.findUniqueOrThrow({
     where: { id: params.conversationId },
@@ -31,5 +33,5 @@ export async function resolveConversationMembership(params: {
   const otherMember = conversation.members.find((m) => m.userId !== params.userId);
   const canSend = await canSendInConversation(conversation, otherMember?.userId, params.userId);
 
-  return { isMember: true, lastReadAt: membership.lastReadAt, canSend };
+  return { isMember: true, lastReadAt: membership.lastReadAt, canSend, clearedAt: membership.clearedAt };
 }

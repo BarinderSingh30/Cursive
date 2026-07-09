@@ -85,3 +85,30 @@ describe("resolveConversationMembership canSend", () => {
     expect(result.canSend).toBe(false);
   });
 });
+
+describe("resolveConversationMembership clearedAt", () => {
+  it("reports null clearedAt for a member who has never cleared history", async () => {
+    const alice = await prisma.user.create({ data: { email: "alice7@chat-auth-test.local", emailVerified: true } });
+    const conversation = await prisma.conversation.create({
+      data: { isGroup: false, members: { create: { userId: alice.id } } },
+    });
+
+    const result = await resolveConversationMembership({ userId: alice.id, conversationId: conversation.id });
+    expect(result.clearedAt).toBeNull();
+  });
+
+  it("reports the member's clearedAt once they've cleared history", async () => {
+    const alice = await prisma.user.create({ data: { email: "alice8@chat-auth-test.local", emailVerified: true } });
+    const conversation = await prisma.conversation.create({
+      data: { isGroup: false, members: { create: { userId: alice.id } } },
+    });
+    const clearedAt = new Date();
+    await prisma.conversationMember.update({
+      where: { conversationId_userId: { conversationId: conversation.id, userId: alice.id } },
+      data: { clearedAt },
+    });
+
+    const result = await resolveConversationMembership({ userId: alice.id, conversationId: conversation.id });
+    expect(result.clearedAt).toEqual(clearedAt);
+  });
+});

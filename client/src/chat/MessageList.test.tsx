@@ -128,4 +128,18 @@ describe("MessageList", () => {
 
     expect(scrollContainer.scrollTop).toBe(10 + (800 - 500));
   });
+
+  it("calls onDeleteMessage with the message id when its delete control is clicked", () => {
+    const onDeleteMessage = vi.fn();
+    render(<MessageList messages={[makeMessage({ id: "m1" })]} onDeleteMessage={onDeleteMessage} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /delete message/i }));
+
+    expect(onDeleteMessage).toHaveBeenCalledWith("m1");
+  });
+
+  it("does not render a delete control when onDeleteMessage is omitted", () => {
+    render(<MessageList messages={[makeMessage()]} />);
+    expect(screen.queryByRole("button", { name: /delete message/i })).not.toBeInTheDocument();
+  });
 });

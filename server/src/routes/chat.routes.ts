@@ -6,13 +6,16 @@ import { mintConnectionTicket } from "../authorization/connectionTicket.js";
 import { asyncHandler } from "../middleware/asyncHandler.js";
 import { resolveConversationMembership } from "../chat/authorization.js";
 import {
+  clearConversationHistory,
   createGroupConversation,
+  deleteMessageForUser,
   findOrCreateDm,
   getConversationSummary,
   listConversationsForUser,
   markConversationRead,
+  visibleMessagesWhere,
 } from "../chat/conversations.js";
-import { notifyConversationCreated } from "../chat/wsGateway.js";
+import { notifyConversationCreated, notifyUser } from "../chat/wsGateway.js";
 
 export const chatRouter = Router();
 chatRouter.use(requireAuth);
@@ -85,7 +88,7 @@ chatRouter.get("/conversations/:id/messages", async (req, res) => {
 
   const before = typeof req.query.before === "string" ? req.query.before : undefined;
   const messages = await prisma.message.findMany({
-    where: { conversationId: req.params.id },
+    where: { conversationId: req.params.id, ...visibleMessagesWhere(res.locals.userId as string, access.clearedAt) },
     include: { sender: true },
     orderBy: { createdAt: "desc" },
     take: 30,
@@ -112,5 +115,44 @@ chatRouter.post("/conversations/:id/read", async (req, res) => {
   }
 
   await markConversationRead(res.locals.userId as string, req.params.id);
+  res.status(204).send();
+});
+
+chatRouter.post("/conversations/:id/clear", async (req, res) => {
+  const access = await resolveConversationMembership({ userId: res.locals.userId as string, conversationId: req.params.id });
+  if (!access.isMember) {
+    res.status(403).json({ error: "Not a member of this conversation" });
+    return;
+  }
+
+  await clearConversationHistory(res.locals.userId as string, req.params.id);
+  notifyUser(res.locals.userId as string, { type: "history-cleared", conversationId: req.params.id });
+  res.status(204).send();
+});
+
+chatRouter.delete("/messages/:messageId", async (req, res) => {
+  const message = await prisma.message.findUnique({ where: { id: req.params.messageId } });
+  if (!message) {
+    res.status(404).json({ error: "Message not found" });
+    return;
+  }
+
+  const access = await resolveConversationMembership({
+    userId: res.locals.userId as string,
+    conversationId: message.conversationId,
+  });
+  if (!access.isMember) {
+    // Same 404 as a nonexistent message — a non-member shouldn't be able to
+    // tell "no such message" apart from "exists, but isn't yours to see."
+    res.status(404).json({ error: "Message not found" });
+    return;
+  }
+
+  await deleteMessageForUser(res.locals.userId as string, req.params.messageId);
+  notifyUser(res.locals.userId as string, {
+    type: "message-deleted",
+    conversationId: message.conversationId,
+    messageId: req.params.messageId,
+  });
   res.status(204).send();
 });

@@ -36,6 +36,17 @@ export function useChatSocket() {
     }));
   }, []);
 
+  const applyMessageDeleted = useCallback((conversationId: string, messageId: string) => {
+    setMessagesByConversation((current) => ({
+      ...current,
+      [conversationId]: (current[conversationId] ?? []).filter((m) => m.id !== messageId),
+    }));
+  }, []);
+
+  const applyHistoryCleared = useCallback((conversationId: string) => {
+    setMessagesByConversation((current) => ({ ...current, [conversationId]: [] }));
+  }, []);
+
   const handleTypingEvent = useCallback((conversationId: string, userId: string, userName: string | null) => {
     setTypingByConversation((current) => {
       const withoutUser = (current[conversationId] ?? []).filter((u) => u.userId !== userId);
@@ -79,6 +90,13 @@ export function useChatSocket() {
         if (data.type === "typing") {
           handleTypingEvent(data.conversationId, data.userId, data.userName);
         }
+        if (data.type === "message-deleted") {
+          applyMessageDeleted(data.conversationId, data.messageId);
+        }
+        if (data.type === "history-cleared") {
+          applyHistoryCleared(data.conversationId);
+          refreshConversations();
+        }
       };
     })();
 
@@ -86,7 +104,7 @@ export function useChatSocket() {
       cancelled = true;
       socket?.close();
     };
-  }, [refreshConversations, handleTypingEvent, clearTypingUser]);
+  }, [refreshConversations, handleTypingEvent, clearTypingUser, applyMessageDeleted, applyHistoryCleared]);
 
   const [hasMoreByConversation, setHasMoreByConversation] = useState<Record<string, boolean>>({});
   const [loadingByConversation, setLoadingByConversation] = useState<Record<string, boolean>>({});
@@ -141,6 +159,23 @@ export function useChatSocket() {
     [refreshConversations],
   );
 
+  const deleteMessage = useCallback(
+    async (conversationId: string, messageId: string) => {
+      await api.delete(`/api/chat/messages/${messageId}`);
+      applyMessageDeleted(conversationId, messageId);
+    },
+    [applyMessageDeleted],
+  );
+
+  const clearHistory = useCallback(
+    async (conversationId: string) => {
+      await api.post(`/api/chat/conversations/${conversationId}/clear`);
+      applyHistoryCleared(conversationId);
+      await refreshConversations();
+    },
+    [applyHistoryCleared, refreshConversations],
+  );
+
   return {
     conversations,
     messagesByConversation,
@@ -152,5 +187,7 @@ export function useChatSocket() {
     notifyTyping,
     markRead,
     refreshConversations,
+    deleteMessage,
+    clearHistory,
   };
 }
