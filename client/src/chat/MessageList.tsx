@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { ChatMessage } from "@cursive/shared";
 import { useSession } from "../auth/authClient.js";
 
@@ -39,6 +39,22 @@ export function MessageList({
   const containerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const prevScrollHeightRef = useRef<number | null>(null);
+  const [openMessageId, setOpenMessageId] = useState<string | null>(null);
+
+  // Single source of truth for open/close: clicking a message opens it (or
+  // closes it if already open), clicking a different message switches to it,
+  // and clicking anywhere else closes whatever's open. Handling this in one
+  // listener avoids a race between a per-message click handler and a
+  // separate "outside click" listener fighting over the same state.
+  useEffect(() => {
+    const handleDocumentClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const clickedId = target.closest<HTMLElement>("[data-message-id]")?.dataset.messageId ?? null;
+      setOpenMessageId((current) => (clickedId === current ? null : clickedId));
+    };
+    document.addEventListener("click", handleDocumentClick);
+    return () => document.removeEventListener("click", handleDocumentClick);
+  }, []);
 
   useLayoutEffect(() => {
     const container = containerRef.current;
@@ -73,6 +89,7 @@ export function MessageList({
         return (
           <div
             key={m.id}
+            data-message-id={m.id}
             style={{
               alignSelf: isSelf ? "flex-end" : "flex-start",
               maxWidth: "70%",
@@ -80,6 +97,7 @@ export function MessageList({
               alignItems: "flex-end",
               gap: 4,
               flexDirection: isSelf ? "row-reverse" : "row",
+              cursor: onDeleteMessage ? "pointer" : undefined,
             }}
           >
             <div>
@@ -95,7 +113,7 @@ export function MessageList({
                 {m.content}
               </div>
             </div>
-            {onDeleteMessage && (
+            {onDeleteMessage && openMessageId === m.id && (
               <button
                 type="button"
                 onClick={() => onDeleteMessage(m.id)}
@@ -106,12 +124,12 @@ export function MessageList({
                   background: "transparent",
                   cursor: "pointer",
                   color: "#adb5bd",
-                  fontSize: 14,
+                  fontSize: 12,
                   lineHeight: 1,
-                  padding: 2,
+                  padding: "4px 6px",
                 }}
               >
-                ✕
+                Delete
               </button>
             )}
           </div>

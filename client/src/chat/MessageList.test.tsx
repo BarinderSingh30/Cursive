@@ -129,17 +129,60 @@ describe("MessageList", () => {
     expect(scrollContainer.scrollTop).toBe(10 + (800 - 500));
   });
 
-  it("calls onDeleteMessage with the message id when its delete control is clicked", () => {
+  it("does not show a delete control until the message is clicked", () => {
+    render(<MessageList messages={[makeMessage()]} onDeleteMessage={vi.fn()} />);
+    expect(screen.queryByRole("button", { name: /delete message/i })).not.toBeInTheDocument();
+  });
+
+  it("shows a delete control after clicking the message, and calls onDeleteMessage when clicked", () => {
     const onDeleteMessage = vi.fn();
     render(<MessageList messages={[makeMessage({ id: "m1" })]} onDeleteMessage={onDeleteMessage} />);
 
+    fireEvent.click(screen.getByText("hello"));
     fireEvent.click(screen.getByRole("button", { name: /delete message/i }));
 
     expect(onDeleteMessage).toHaveBeenCalledWith("m1");
   });
 
-  it("does not render a delete control when onDeleteMessage is omitted", () => {
+  it("hides the delete control when the same message is clicked again", () => {
+    render(<MessageList messages={[makeMessage()]} onDeleteMessage={vi.fn()} />);
+
+    fireEvent.click(screen.getByText("hello"));
+    expect(screen.getByRole("button", { name: /delete message/i })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("hello"));
+    expect(screen.queryByRole("button", { name: /delete message/i })).not.toBeInTheDocument();
+  });
+
+  it("switches the delete control to a different message when it's clicked", () => {
+    render(
+      <MessageList
+        messages={[makeMessage({ id: "m1", content: "first" }), makeMessage({ id: "m2", content: "second" })]}
+        onDeleteMessage={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByText("first"));
+    expect(screen.getByRole("button", { name: /delete message/i })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("second"));
+    const deleteButtons = screen.getAllByRole("button", { name: /delete message/i });
+    expect(deleteButtons).toHaveLength(1);
+  });
+
+  it("hides the delete control when clicking outside the message", () => {
+    render(<MessageList messages={[makeMessage()]} onDeleteMessage={vi.fn()} />);
+
+    fireEvent.click(screen.getByText("hello"));
+    expect(screen.getByRole("button", { name: /delete message/i })).toBeInTheDocument();
+
+    fireEvent.click(document.body);
+    expect(screen.queryByRole("button", { name: /delete message/i })).not.toBeInTheDocument();
+  });
+
+  it("does not render a delete control when onDeleteMessage is omitted, even when clicked", () => {
     render(<MessageList messages={[makeMessage()]} />);
+    fireEvent.click(screen.getByText("hello"));
     expect(screen.queryByRole("button", { name: /delete message/i })).not.toBeInTheDocument();
   });
 });
