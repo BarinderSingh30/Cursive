@@ -11,6 +11,8 @@ import { orderedPair } from "../db/orderedPair.js";
 import { requireAuth } from "../authorization/requireAuth.js";
 import { requireBoardRole } from "../authorization/requireBoardRole.js";
 import { mintConnectionTicket } from "../authorization/connectionTicket.js";
+import { mintCallToken } from "../call/callToken.js";
+import { env } from "../env.js";
 import { notifyBoardMembershipChanged, notifyBoardDeleted } from "../collab/hocuspocus.js";
 
 export const boardsRouter = Router();
@@ -80,6 +82,22 @@ boardsRouter.get("/:boardId/sync-ticket", requireBoardRole("viewer"), async (req
     role: res.locals.boardRole,
   });
   res.json({ ticket });
+});
+
+/**
+ * requireBoardRole only puts userId/boardRole on res.locals (no display
+ * name) — look the user up the same way GET /:boardId/members already does
+ * (m.user.name) to give LiveKit something to show on the participant's tile.
+ */
+boardsRouter.get("/:boardId/call-token", requireBoardRole("viewer"), async (req, res) => {
+  const user = await prisma.user.findUniqueOrThrow({ where: { id: res.locals.userId as string } });
+  const token = await mintCallToken({
+    userId: res.locals.userId as string,
+    userName: user.name ?? user.email,
+    boardId: req.params.boardId,
+    role: res.locals.boardRole,
+  });
+  res.json({ token, url: env.LIVEKIT_URL });
 });
 
 /**
