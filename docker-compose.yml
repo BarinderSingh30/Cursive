@@ -20,10 +20,19 @@ services:
     image: livekit/livekit-server:latest
     restart: unless-stopped
     command: --dev --bind 0.0.0.0
+    environment:
+      # Docker Desktop on Windows is slow (sometimes effectively stuck)
+      # binding the full 50000-60000 UDP range. Local dev only ever has a
+      # couple of participants at once, so a much narrower range is plenty
+      # and binds in a couple of seconds instead of minutes. Must match the
+      # port mapping below — LiveKit only offers ICE candidates within
+      # whatever range it's told here.
+      - LIVEKIT_RTC_PORT_RANGE_START=50000
+      - LIVEKIT_RTC_PORT_RANGE_END=50100
     ports:
       - "7880:7880"
       - "7881:7881"
-      - "50000-60000:50000-60000/udp"
+      - "50000-50100:50000-50100/udp"
 
 volumes:
   postgres_data:
