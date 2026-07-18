@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Room, RoomEvent, Track } from "livekit-client";
 import type { CallTokenResponse } from "@cursive/shared";
 import { api } from "../api/client.js";
-import { env } from "../env.js";
 
 export interface CallParticipant {
   identity: string;
@@ -15,6 +14,7 @@ export interface CallParticipant {
 
 export function useCall(boardId: string, canPublish: boolean) {
   const roomRef = useRef<Room | null>(null);
+  const isJoiningRef = useRef(false);
   const [isJoined, setIsJoined] = useState(false);
   const [participants, setParticipants] = useState<CallParticipant[]>([]);
 
@@ -47,37 +47,62 @@ export function useCall(boardId: string, canPublish: boolean) {
   }, []);
 
   const join = useCallback(async () => {
-    const { token, url } = await api.get<CallTokenResponse>(`/api/boards/${boardId}/call-token`);
-    const room = new Room();
-    roomRef.current = room;
+    // Guard against re-entrancy: a double-click or a retry fired before the
+    // in-flight connect() resolves must be a no-op, otherwise a second Room
+    // instance would overwrite roomRef.current and leak the first one.
+    if (isJoiningRef.current || isJoined) return;
+    isJoiningRef.current = true;
 
-    room
-      .on(RoomEvent.TrackSubscribed, syncParticipants)
-      .on(RoomEvent.TrackUnsubscribed, syncParticipants)
-      .on(RoomEvent.ParticipantConnected, syncParticipants)
-      .on(RoomEvent.ParticipantDisconnected, syncParticipants)
-      .on(RoomEvent.LocalTrackPublished, syncParticipants)
-      .on(RoomEvent.LocalTrackUnpublished, syncParticipants)
-      .on(RoomEvent.Disconnected, () => {
-        roomRef.current = null;
-        setIsJoined(false);
-        setParticipants([]);
-      });
+    try {
+      const { token, url } = await api.get<CallTokenResponse>(`/api/boards/${boardId}/call-token`);
+      const room = new Room();
+      roomRef.current = room;
 
-    await room.connect(url, token);
+      room
+        .on(RoomEvent.TrackSubscribed, syncParticipants)
+        .on(RoomEvent.TrackUnsubscribed, syncParticipants)
+        .on(RoomEvent.ParticipantConnected, syncParticipants)
+        .on(RoomEvent.ParticipantDisconnected, syncParticipants)
+        .on(RoomEvent.LocalTrackPublished, syncParticipants)
+        .on(RoomEvent.LocalTrackUnpublished, syncParticipants)
+        .on(RoomEvent.Disconnected, () => {
+          // Only clear the ref if it still points at *this* room — an older,
+          // already-replaced room's late Disconnected event must not wipe
+          // out a newer, legitimate room reference.
+          if (roomRef.current === room) {
+            roomRef.current = null;
+          }
+          setIsJoined(false);
+          setParticipants([]);
+        });
 
-    if (canPublish) {
       try {
-        await room.localParticipant.enableCameraAndMicrophone();
-      } catch {
-        // Browser denied camera/mic permission — join listen/watch-only
-        // instead of failing the whole call.
+        await room.connect(url, token);
+      } catch (err) {
+        // connect() failed — leave no dead Room behind, otherwise the
+        // re-entrancy guard above would permanently block future joins.
+        if (roomRef.current === room) {
+          roomRef.current = null;
+        }
+        room.disconnect();
+        throw err;
       }
-    }
 
-    setIsJoined(true);
-    syncParticipants();
-  }, [boardId, canPublish, syncParticipants]);
+      if (canPublish) {
+        try {
+          await room.localParticipant.enableCameraAndMicrophone();
+        } catch {
+          // Browser denied camera/mic permission — join listen/watch-only
+          // instead of failing the whole call.
+        }
+      }
+
+      setIsJoined(true);
+      syncParticipants();
+    } finally {
+      isJoiningRef.current = false;
+    }
+  }, [boardId, canPublish, isJoined, syncParticipants]);
 
   const leave = useCallback(() => {
     roomRef.current?.disconnect();
@@ -87,18 +112,24 @@ export function useCall(boardId: string, canPublish: boolean) {
   }, []);
 
   const toggleCamera = useCallback(async () => {
+    // Defense in depth: a viewer must never trigger a camera permission
+    // prompt, even if a future consumer renders this control unconditionally.
+    if (!canPublish) return;
     const local = roomRef.current?.localParticipant;
     if (!local) return;
     await local.setCameraEnabled(!local.isCameraEnabled);
     syncParticipants();
-  }, [syncParticipants]);
+  }, [canPublish, syncParticipants]);
 
   const toggleMic = useCallback(async () => {
+    // Defense in depth: a viewer must never trigger a mic permission
+    // prompt, even if a future consumer renders this control unconditionally.
+    if (!canPublish) return;
     const local = roomRef.current?.localParticipant;
     if (!local) return;
     await local.setMicrophoneEnabled(!local.isMicrophoneEnabled);
     syncParticipants();
-  }, [syncParticipants]);
+  }, [canPublish, syncParticipants]);
 
   // Covers navigating away from the board mid-call, not just clicking Leave.
   useEffect(() => {
