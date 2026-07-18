@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@cursive/shared": "*",
+    "@hocuspocus/extension-database": "^2.15.3",
     "@hocuspocus/server": "^2.15.0",
     "@prisma/client": "^5.20.0",
     "better-auth": "^1.2.9",

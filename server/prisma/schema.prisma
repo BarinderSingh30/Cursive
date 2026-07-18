@@ -86,6 +86,10 @@ model Board {
   id        String   @id @default(cuid())
   name      String
   ownerId   String
+  // The board's canvas content as an encoded Yjs update (see
+  // server/src/collab/persistence.ts) — opaque binary, never queried or
+  // inspected here, just fetched/stored whole by Hocuspocus.
+  content   Bytes?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
