@@ -50,7 +50,7 @@ function BoardInner({ roomId }: { roomId: string }) {
   const preferredColor = useMemo(() => colorForUser(userId ?? "guest"), [userId]);
 
   const isViewer = board?.role === "viewer";
-  const { peers, updateCursor, setInCall, callParticipantCount, localPresence } = useAwareness(
+  const { peers, viewerPeers, updateCursor, setInCall, callParticipantCount, localPresence } = useAwareness(
     provider,
     userName,
     preferredColor,
@@ -64,13 +64,15 @@ function BoardInner({ roomId }: { roomId: string }) {
   // Derived from isJoined (useCall's single source of truth) rather than set
   // imperatively at each call site — a re-entrant join() call that no-ops, or
   // a join() that later fails, must never leave the broadcast inCall state
-  // out of sync with whether we actually have a live Room.
+  // out of sync with whether we actually have a live Room. Viewers never
+  // broadcast inCall at all — they auto-watch below, which isn't "joining a
+  // call" from other clients' perspective (see useAwareness's count).
   useEffect(() => {
-    setInCall(isJoined);
+    setInCall(canPublish && isJoined);
     // setInCall is recreated every render (not memoized in useAwareness) —
-    // depending only on isJoined keeps this from re-broadcasting the same
-    // awareness value on every unrelated re-render.
-  }, [isJoined]);
+    // depending only on isJoined/canPublish keeps this from re-broadcasting
+    // the same awareness value on every unrelated re-render.
+  }, [canPublish, isJoined]);
 
   const handleJoinCall = async () => {
     setCallError(null);
@@ -86,6 +88,21 @@ function BoardInner({ roomId }: { roomId: string }) {
   const handleLeaveCall = () => {
     leave();
   };
+
+  // Viewers have no Join Call button — they're always watching/listening
+  // whenever a collaborator/owner is actually in a call, and disconnected
+  // the moment none are, so they never end up alone in an empty call (the
+  // old "ghost participant" bug) or need to manage it themselves. Silent on
+  // failure: there's no button/error UI for a passive viewer, and the next
+  // callParticipantCount change (e.g. another collaborator joining) retries.
+  useEffect(() => {
+    if (canPublish) return;
+    if (callParticipantCount > 0 && !isJoined) {
+      join().catch(() => {});
+    } else if (callParticipantCount === 0 && isJoined) {
+      leave();
+    }
+  }, [canPublish, callParticipantCount, isJoined, join, leave]);
 
   // If we no longer have access — e.g. the owner just removed us — bounce
   // back to the dashboard automatically. Board *deletion* is handled
@@ -145,14 +162,16 @@ function BoardInner({ roomId }: { roomId: string }) {
         </div>
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
           {board?.role === "owner" && <InviteMemberDialog boardId={roomId} membershipVersion={membershipVersion} />}
-          <JoinCallButton
-            isJoined={isJoined}
-            othersInCallCount={callParticipantCount}
-            onJoin={handleJoinCall}
-            onLeave={handleLeaveCall}
-          />
+          {canPublish && (
+            <JoinCallButton
+              isJoined={isJoined}
+              othersInCallCount={callParticipantCount}
+              onJoin={handleJoinCall}
+              onLeave={handleLeaveCall}
+            />
+          )}
           {callError && <span style={{ fontSize: 12, color: "#e03131" }}>{callError}</span>}
-          <PresenceList self={localPresence} peers={peers} />
+          <PresenceList self={localPresence} peers={peers} viewerPeers={viewerPeers} />
         </div>
       </div>
       {isJoined && (

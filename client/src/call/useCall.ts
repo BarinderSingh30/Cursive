@@ -7,6 +7,10 @@ export interface CallParticipant {
   identity: string;
   name: string;
   isLocal: boolean;
+  // Server-granted permission (from the LiveKit token, ultimately from
+  // board role) — the authoritative source for "is this a viewer," rather
+  // than plumbing board role through the call layer separately.
+  canPublish: boolean;
   cameraTrack: Track | null;
   audioTrack: Track | null;
   micEnabled: boolean;
@@ -31,6 +35,7 @@ export function useCall(boardId: string, canPublish: boolean) {
         identity: local.identity,
         name: local.name ?? local.identity,
         isLocal: true,
+        canPublish: local.permissions?.canPublish ?? false,
         cameraTrack: local.getTrackPublication(Track.Source.Camera)?.track ?? null,
         audioTrack: local.getTrackPublication(Track.Source.Microphone)?.track ?? null,
         micEnabled: local.isMicrophoneEnabled,
@@ -40,6 +45,7 @@ export function useCall(boardId: string, canPublish: boolean) {
         identity: p.identity,
         name: p.name ?? p.identity,
         isLocal: false,
+        canPublish: p.permissions?.canPublish ?? false,
         cameraTrack: p.getTrackPublication(Track.Source.Camera)?.track ?? null,
         audioTrack: p.getTrackPublication(Track.Source.Microphone)?.track ?? null,
         micEnabled: p.isMicrophoneEnabled,
@@ -66,8 +72,18 @@ export function useCall(boardId: string, canPublish: boolean) {
         .on(RoomEvent.TrackUnsubscribed, syncParticipants)
         .on(RoomEvent.ParticipantConnected, syncParticipants)
         .on(RoomEvent.ParticipantDisconnected, syncParticipants)
+        // A participant's permission grant can arrive slightly after their
+        // initial ParticipantConnected event — without this, canPublish
+        // could briefly read as false for a genuine collaborator/owner.
+        .on(RoomEvent.ParticipantPermissionsChanged, syncParticipants)
         .on(RoomEvent.LocalTrackPublished, syncParticipants)
         .on(RoomEvent.LocalTrackUnpublished, syncParticipants)
+        // Toggling mic/camera mid-call mutes the existing track rather than
+        // unpublishing it, so it only ever fires Track(Un)Muted — without
+        // these, everyone else's tile keeps showing whatever mic/camera
+        // state a participant had at the moment they joined.
+        .on(RoomEvent.TrackMuted, syncParticipants)
+        .on(RoomEvent.TrackUnmuted, syncParticipants)
         .on(RoomEvent.Disconnected, () => {
           // Only clear the ref if it still points at *this* room — an older,
           // already-replaced room's late Disconnected event must not wipe

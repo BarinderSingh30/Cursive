@@ -13,6 +13,7 @@ export interface PresenceState {
 
 export function useAwareness(provider: HocuspocusProvider | null, name: string, preferredColor: string, role: BoardRole) {
   const [peers, setPeers] = useState<Map<number, PresenceState>>(new Map());
+  const [viewerPeers, setViewerPeers] = useState<Map<number, PresenceState>>(new Map());
   const [color, setColor] = useState(preferredColor);
   const [callParticipantCount, setCallParticipantCount] = useState(0);
   // cursor moves constantly, inCall flips rarely — tracked together so
@@ -36,20 +37,28 @@ export function useAwareness(provider: HocuspocusProvider | null, name: string, 
     provider.setAwarenessField("presence", { name, color: resolvedColor, role, ...localFieldsRef.current });
 
     const sync = () => {
-      const states = new Map<number, PresenceState>();
+      const collaboratorStates = new Map<number, PresenceState>();
+      const viewerStates = new Map<number, PresenceState>();
       let othersInCall = 0;
       provider.awareness?.getStates().forEach((state, clientId) => {
         if (clientId === provider.awareness?.clientID) return;
         const presence = state.presence as PresenceState | undefined;
-        if (presence?.inCall) othersInCall += 1;
-        // Viewers can number in the dozens or hundreds (a broadcast link's
-        // audience later on) — the "who's online" list is for people you're
-        // actually collaborating with, not everyone watching. Call presence
-        // is counted separately above, regardless of role, since a viewer
-        // can join a call to watch/listen even though they're hidden here.
-        if (presence && presence.role !== "viewer") states.set(clientId, presence);
+        if (!presence) return;
+        // Only collaborators/owners ever broadcast inCall — a viewer's
+        // client auto-connects to watch/listen once this count is above
+        // zero, but that's not "joining a call" from this count's
+        // perspective, so a viewer's own presence never contributes to it.
+        if (presence.inCall && presence.role !== "viewer") othersInCall += 1;
+        // Collaborators/owners and viewers are tracked as two separate
+        // lists rather than one merged "who's online" count — a future
+        // broadcast link's audience can number in the dozens or hundreds,
+        // so it gets its own count instead of swamping the collaborator
+        // list.
+        if (presence.role === "viewer") viewerStates.set(clientId, presence);
+        else collaboratorStates.set(clientId, presence);
       });
-      setPeers(states);
+      setPeers(collaboratorStates);
+      setViewerPeers(viewerStates);
       setCallParticipantCount(othersInCall);
     };
 
@@ -70,5 +79,5 @@ export function useAwareness(provider: HocuspocusProvider | null, name: string, 
 
   const localPresence: PresenceState = { name, color, role, ...localFieldsRef.current };
 
-  return { peers, updateCursor, setInCall, callParticipantCount, localPresence };
+  return { peers, viewerPeers, updateCursor, setInCall, callParticipantCount, localPresence };
 }
