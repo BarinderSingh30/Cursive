@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { roleAtLeast } from "@cursive/shared";
 import { useYjsDocument } from "./yjs/useYjsDocument.js";
 import { useYShapes } from "./yjs/useYShapes.js";
 import { useAwareness } from "./yjs/useAwareness.js";
@@ -11,6 +12,9 @@ import { InviteMemberDialog } from "./InviteMemberDialog.js";
 import { useBoard } from "./useBoard.js";
 import { useSession } from "../auth/authClient.js";
 import { colorForUser } from "./presenceColors.js";
+import { useCall } from "../call/useCall.js";
+import { JoinCallButton } from "../call/JoinCallButton.js";
+import { CallStrip } from "../call/CallStrip.js";
 
 function BoardDeletedOverlay() {
   return (
@@ -46,15 +50,47 @@ function BoardInner({ roomId }: { roomId: string }) {
   const preferredColor = useMemo(() => colorForUser(userId ?? "guest"), [userId]);
 
   const isViewer = board?.role === "viewer";
-  const { peers, updateCursor, localPresence } = useAwareness(provider, userName, preferredColor, board?.role ?? "viewer");
+  const { peers, updateCursor, setInCall, callParticipantCount, localPresence } = useAwareness(
+    provider,
+    userName,
+    preferredColor,
+    board?.role ?? "viewer",
+  );
   const { tool } = useActiveTool();
+  const canPublish = roleAtLeast(board?.role ?? null, "collaborator");
+  const { isJoined, participants, join, leave, toggleCamera, toggleMic } = useCall(roomId, canPublish);
+  const [callError, setCallError] = useState<string | null>(null);
+
+  const handleJoinCall = async () => {
+    setCallError(null);
+    try {
+      await join();
+      setInCall(true);
+    } catch {
+      // Token fetch (403/network) or room.connect() failure — surface it
+      // next to the button instead of an uncaught rejection and a UI stuck
+      // showing "Join call" with nothing having happened.
+      setCallError("Couldn't join the call. Check your connection and try again.");
+    }
+  };
+  const handleLeaveCall = () => {
+    leave();
+    setInCall(false);
+  };
 
   // If we no longer have access — e.g. the owner just removed us — bounce
   // back to the dashboard automatically. Board *deletion* is handled
   // separately below with an explicit message instead of a silent redirect.
   useEffect(() => {
-    if (boardError && !boardDeleted) window.location.href = "/dashboard";
+    if (boardError && !boardDeleted) {
+      handleLeaveCall();
+      window.location.href = "/dashboard";
+    }
   }, [boardError, boardDeleted]);
+
+  useEffect(() => {
+    if (boardDeleted) handleLeaveCall();
+  }, [boardDeleted]);
 
   // The owner adding/removing a member, or deleting the board outright,
   // broadcasts a lightweight signal over the same connection everyone's
@@ -100,9 +136,27 @@ function BoardInner({ roomId }: { roomId: string }) {
         </div>
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
           {board?.role === "owner" && <InviteMemberDialog boardId={roomId} membershipVersion={membershipVersion} />}
+          <JoinCallButton
+            isJoined={isJoined}
+            othersInCallCount={callParticipantCount}
+            onJoin={handleJoinCall}
+            onLeave={handleLeaveCall}
+          />
+          {callError && <span style={{ fontSize: 12, color: "#e03131" }}>{callError}</span>}
           <PresenceList self={localPresence} peers={peers} />
         </div>
       </div>
+      {isJoined && (
+        <CallStrip
+          participants={participants}
+          canPublish={canPublish}
+          micEnabled={participants.find((p) => p.isLocal)?.micEnabled ?? false}
+          cameraEnabled={participants.find((p) => p.isLocal)?.cameraEnabled ?? false}
+          onToggleMic={toggleMic}
+          onToggleCamera={toggleCamera}
+          onLeave={handleLeaveCall}
+        />
+      )}
       <div style={{ flex: 1 }}>
         <CanvasStage
           shapes={shapes}
