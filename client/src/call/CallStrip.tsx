@@ -21,6 +21,21 @@ function ParticipantTile({ participant }: { participant: CallParticipant }) {
     };
   }, [participant.cameraTrack]);
 
+  useEffect(() => {
+    // Skip the local participant's own mic — attaching it would echo the
+    // user's own voice back at them.
+    const track = participant.audioTrack;
+    if (!track || participant.isLocal) return;
+
+    const element = track.attach();
+    document.body.appendChild(element);
+
+    return () => {
+      track.detach(element);
+      element.remove();
+    };
+  }, [participant.audioTrack, participant.isLocal]);
+
   return (
     <div style={{ width: 120, background: "#1a1a1a", borderRadius: 8, overflow: "hidden", position: "relative" }}>
       <div

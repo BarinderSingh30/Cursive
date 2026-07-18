@@ -8,6 +8,7 @@ export interface CallParticipant {
   name: string;
   isLocal: boolean;
   cameraTrack: Track | null;
+  audioTrack: Track | null;
   micEnabled: boolean;
   cameraEnabled: boolean;
 }
@@ -31,6 +32,7 @@ export function useCall(boardId: string, canPublish: boolean) {
         name: local.name ?? local.identity,
         isLocal: true,
         cameraTrack: local.getTrackPublication(Track.Source.Camera)?.track ?? null,
+        audioTrack: local.getTrackPublication(Track.Source.Microphone)?.track ?? null,
         micEnabled: local.isMicrophoneEnabled,
         cameraEnabled: local.isCameraEnabled,
       },
@@ -39,6 +41,7 @@ export function useCall(boardId: string, canPublish: boolean) {
         name: p.name ?? p.identity,
         isLocal: false,
         cameraTrack: p.getTrackPublication(Track.Source.Camera)?.track ?? null,
+        audioTrack: p.getTrackPublication(Track.Source.Microphone)?.track ?? null,
         micEnabled: p.isMicrophoneEnabled,
         cameraEnabled: p.isCameraEnabled,
       })),

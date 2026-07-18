@@ -61,11 +61,21 @@ function BoardInner({ roomId }: { roomId: string }) {
   const { isJoined, participants, join, leave, toggleCamera, toggleMic } = useCall(roomId, canPublish);
   const [callError, setCallError] = useState<string | null>(null);
 
+  // Derived from isJoined (useCall's single source of truth) rather than set
+  // imperatively at each call site — a re-entrant join() call that no-ops, or
+  // a join() that later fails, must never leave the broadcast inCall state
+  // out of sync with whether we actually have a live Room.
+  useEffect(() => {
+    setInCall(isJoined);
+    // setInCall is recreated every render (not memoized in useAwareness) —
+    // depending only on isJoined keeps this from re-broadcasting the same
+    // awareness value on every unrelated re-render.
+  }, [isJoined]);
+
   const handleJoinCall = async () => {
     setCallError(null);
     try {
       await join();
-      setInCall(true);
     } catch {
       // Token fetch (403/network) or room.connect() failure — surface it
       // next to the button instead of an uncaught rejection and a UI stuck
@@ -75,7 +85,6 @@ function BoardInner({ roomId }: { roomId: string }) {
   };
   const handleLeaveCall = () => {
     leave();
-    setInCall(false);
   };
 
   // If we no longer have access — e.g. the owner just removed us — bounce
