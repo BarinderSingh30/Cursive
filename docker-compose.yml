@@ -29,6 +29,15 @@ services:
       # whatever range it's told here.
       - LIVEKIT_RTC_PORT_RANGE_START=50000
       - LIVEKIT_RTC_PORT_RANGE_END=50100
+      # Without this, LiveKit advertises its own container-internal Docker
+      # network IP (e.g. 172.18.0.3) as the address to send media to — a
+      # browser on the host can never reach that, so calls connect
+      # signaling but then silently fail to establish the actual audio/
+      # video path. Browser and server share this machine via Docker
+      # Desktop's published ports, so 127.0.0.1 is the address that's
+      # actually reachable.
+      - LIVEKIT_RTC_USE_EXTERNAL_IP=false
+      - LIVEKIT_RTC_NODE_IP=127.0.0.1
     ports:
       - "7880:7880"
       - "7881:7881"
