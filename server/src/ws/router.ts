@@ -3,6 +3,7 @@ import type { Duplex } from "node:stream";
 import { WebSocketServer } from "ws";
 import type { Hocuspocus } from "@hocuspocus/server";
 import { chatWss } from "../chat/wsGateway.js";
+import { boardChatWss } from "../boardChat/wsGateway.js";
 
 /**
  * Dispatches raw HTTP upgrade requests by URL path, so Hocuspocus's own
@@ -29,6 +30,13 @@ export function createUpgradeHandler(hocuspocus: Hocuspocus) {
     if (pathname === "/chat") {
       chatWss.handleUpgrade(request, socket, head, (ws) => {
         chatWss.emit("connection", ws, request);
+      });
+      return;
+    }
+
+    if (pathname === "/board-chat") {
+      boardChatWss.handleUpgrade(request, socket, head, (ws) => {
+        boardChatWss.emit("connection", ws, request);
       });
       return;
     }
