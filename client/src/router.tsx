@@ -6,6 +6,7 @@ import { RequireAuth } from "./auth/RequireAuth.js";
 import { DashboardPage } from "./dashboard/DashboardPage.js";
 import { FriendsPage } from "./friends/FriendsPage.js";
 import { ChatPage } from "./chat/ChatPage.js";
+import { WatchPage } from "./viewer/WatchPage.js";
 
 function BoardRoute() {
   const { boardId } = useParams<{ boardId: string }>();
@@ -20,6 +21,7 @@ export function AppRouter() {
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
+        <Route path="/watch/:shareToken" element={<WatchPage />} />
         <Route
           path="/dashboard"
           element={
