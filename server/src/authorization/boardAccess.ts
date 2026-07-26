@@ -9,21 +9,34 @@ export interface BoardAccessResult {
 
 /**
  * The single source of truth for "what can this connection do on this board."
- * Every surface that needs to know — Yjs sync, chat (Phase 3), REST routes,
- * LiveKit token minting (Phase 4) — calls into this instead of re-implementing
- * the check. Phase 5 will add a second branch here for anonymous viewer
- * tokens; today there's only the logged-in-user branch.
+ * Every surface that needs to know — Yjs sync, board chat, REST routes,
+ * LiveKit token minting — calls into this instead of re-implementing the
+ * check. Explicit membership always wins; the share-token branch is purely a
+ * fallback for visitors with no BoardMember row (owner/collaborator/invited
+ * viewers opening their own public link still resolve to their real role).
  */
-export async function resolveBoardRole(params: { userId: string | null; boardId: string }): Promise<BoardAccessResult> {
-  const { userId, boardId } = params;
+export async function resolveBoardRole(params: {
+  userId: string | null;
+  boardId: string;
+  shareToken?: string;
+}): Promise<BoardAccessResult> {
+  const { userId, boardId, shareToken } = params;
 
-  if (!userId) {
-    return { role: null, userId: null, anonymous: true };
+  if (userId) {
+    const membership = await prisma.boardMember.findUnique({
+      where: { boardId_userId: { boardId, userId } },
+    });
+    if (membership) {
+      return { role: membership.role as BoardRole, userId, anonymous: false };
+    }
   }
 
-  const membership = await prisma.boardMember.findUnique({
-    where: { boardId_userId: { boardId, userId } },
-  });
+  if (shareToken) {
+    const board = await prisma.board.findUnique({ where: { id: boardId } });
+    if (board?.shareEnabled && board.shareToken === shareToken) {
+      return { role: "viewer", userId, anonymous: !userId };
+    }
+  }
 
-  return { role: (membership?.role as BoardRole | undefined) ?? null, userId, anonymous: false };
+  return { role: null, userId, anonymous: !userId };
 }
