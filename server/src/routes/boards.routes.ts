@@ -1,10 +1,13 @@
 import { Router } from "express";
+import { randomUUID } from "node:crypto";
 import {
   createBoardSchema,
   createBoardInviteSchema,
   type BoardSummary,
   type BoardMemberSummary,
   type PendingBoardInvite,
+  type ShareLinkState,
+  type ShareLinkInfo,
 } from "@cursive/shared";
 import { prisma } from "../db/prisma.js";
 import { orderedPair } from "../db/orderedPair.js";
@@ -14,6 +17,7 @@ import { mintConnectionTicket } from "../authorization/connectionTicket.js";
 import { mintCallToken } from "../call/callToken.js";
 import { env } from "../env.js";
 import { notifyBoardMembershipChanged, notifyBoardDeleted } from "../collab/hocuspocus.js";
+import { getSessionFromRequest } from "../auth/session.js";
 
 export const boardsRouter = Router();
 
@@ -62,6 +66,39 @@ boardsRouter.get("/:boardId", requireBoardRole("viewer"), async (req, res) => {
     role: res.locals.boardRole,
     createdAt: board.createdAt.toISOString(),
   };
+  res.json(body);
+});
+
+boardsRouter.get("/:boardId/share", requireBoardRole("owner"), async (req, res) => {
+  const board = await prisma.board.findUniqueOrThrow({ where: { id: req.params.boardId } });
+  const body: ShareLinkState = { enabled: board.shareEnabled, token: board.shareEnabled ? board.shareToken : null };
+  res.json(body);
+});
+
+boardsRouter.post("/:boardId/share/enable", requireBoardRole("owner"), async (req, res) => {
+  const board = await prisma.board.findUniqueOrThrow({ where: { id: req.params.boardId } });
+  const token = board.shareToken ?? randomUUID();
+  const updated = await prisma.board.update({
+    where: { id: board.id },
+    data: { shareEnabled: true, shareToken: token },
+  });
+  const body: ShareLinkState = { enabled: true, token: updated.shareToken };
+  res.json(body);
+});
+
+// Replaces the token outright, instantly invalidating any previously shared URL.
+boardsRouter.post("/:boardId/share/regenerate", requireBoardRole("owner"), async (req, res) => {
+  const updated = await prisma.board.update({
+    where: { id: req.params.boardId },
+    data: { shareEnabled: true, shareToken: randomUUID() },
+  });
+  const body: ShareLinkState = { enabled: true, token: updated.shareToken };
+  res.json(body);
+});
+
+boardsRouter.post("/:boardId/share/disable", requireBoardRole("owner"), async (req, res) => {
+  await prisma.board.update({ where: { id: req.params.boardId }, data: { shareEnabled: false } });
+  const body: ShareLinkState = { enabled: false, token: null };
   res.json(body);
 });
 
@@ -178,4 +215,30 @@ boardsRouter.delete("/:boardId/members/:userId", requireBoardRole("owner"), asyn
   await prisma.boardMember.deleteMany({ where: { boardId: req.params.boardId, userId: req.params.userId } });
   notifyBoardMembershipChanged(req.params.boardId);
   res.status(204).send();
+});
+
+/**
+ * Public: resolves a share token to the board it belongs to, with no role
+ * requirement — this is how an anonymous visitor's browser first learns
+ * which board a /watch/:shareToken URL points at. If the visitor happens to
+ * be logged in and already has real board membership, hasMembership tells
+ * the client to redirect to the normal /board/:boardId page instead.
+ */
+boardsRouter.get("/by-share/:shareToken", async (req, res) => {
+  const board = await prisma.board.findFirst({
+    where: { shareToken: req.params.shareToken, shareEnabled: true },
+  });
+  if (!board) {
+    res.status(404).json({ error: "This link isn't active" });
+    return;
+  }
+
+  const session = await getSessionFromRequest(req);
+  const userId = session?.user?.id ?? null;
+  const membership = userId
+    ? await prisma.boardMember.findUnique({ where: { boardId_userId: { boardId: board.id, userId } } })
+    : null;
+
+  const body: ShareLinkInfo = { boardId: board.id, boardName: board.name, hasMembership: membership !== null };
+  res.json(body);
 });
