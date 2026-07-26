@@ -32,6 +32,7 @@ model User {
   conversationMemberships ConversationMember[]
   sentMessages             Message[]
   messageDeletions         MessageDeletion[]
+  boardMessages            BoardMessage[]
 }
 
 model Session {
@@ -90,12 +91,18 @@ model Board {
   // server/src/collab/persistence.ts) — opaque binary, never queried or
   // inspected here, just fetched/stored whole by Hocuspocus.
   content   Bytes?
+  // A public, no-account-required watch link. Checked live against the DB
+  // (not a signed token) so disabling/regenerating takes effect immediately
+  // — see docs/superpowers/specs/2026-07-18-phase5-anonymous-viewer-links-design.md.
+  shareEnabled Boolean @default(false)
+  shareToken   String? @unique
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  owner   User          @relation("BoardOwner", fields: [ownerId], references: [id], onDelete: Cascade)
-  members BoardMember[]
-  invites BoardInvite[]
+  owner    User           @relation("BoardOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members  BoardMember[]
+  invites  BoardInvite[]
+  messages BoardMessage[]
 }
 
 model BoardMember {
@@ -108,6 +115,19 @@ model BoardMember {
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([boardId, userId])
+}
+
+model BoardMessage {
+  id        String   @id @default(cuid())
+  boardId   String
+  // Always a real registered user — anonymous share-link visitors can read
+  // board chat but can never post, so this is never nullable.
+  authorId  String
+  content   String
+  createdAt DateTime @default(now())
+
+  board  Board @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  author User  @relation(fields: [authorId], references: [id], onDelete: Cascade)
 }
 
 enum FriendRequestStatus {
