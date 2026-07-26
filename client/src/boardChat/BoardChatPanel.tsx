@@ -10,6 +10,7 @@ interface Props {
 
 export function BoardChatPanel({ messages, canPost, onSend, onReachTop }: Props) {
   const [draft, setDraft] = useState("");
+  const [collapsed, setCollapsed] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -25,10 +26,52 @@ export function BoardChatPanel({ messages, canPost, onSend, onReachTop }: Props)
     setDraft("");
   };
 
+  if (collapsed) {
+    return (
+      <div
+        style={{
+          width: 32,
+          borderLeft: "1px solid #e0e0e0",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          paddingTop: 8,
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => setCollapsed(false)}
+          aria-label="Show chat"
+          title="Show chat"
+          style={{ border: "none", background: "none", cursor: "pointer", fontSize: 16, padding: 4 }}
+        >
+          ◀
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div style={{ width: 300, borderLeft: "1px solid #e0e0e0", display: "flex", flexDirection: "column", height: "100%" }}>
-      <div style={{ padding: 12, borderBottom: "1px solid #e0e0e0" }}>
+      <div
+        style={{
+          padding: 12,
+          borderBottom: "1px solid #e0e0e0",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
         <strong>Chat</strong>
+        <button
+          type="button"
+          onClick={() => setCollapsed(true)}
+          aria-label="Hide chat"
+          title="Hide chat"
+          style={{ border: "none", background: "none", cursor: "pointer", fontSize: 16, padding: 4 }}
+        >
+          ▶
+        </button>
       </div>
       <div
         ref={listRef}

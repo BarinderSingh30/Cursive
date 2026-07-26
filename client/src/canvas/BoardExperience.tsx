@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { roleAtLeast, type BoardRole } from "@cursive/shared";
 import { useYjsDocument } from "./yjs/useYjsDocument.js";
 import { useYShapes } from "./yjs/useYShapes.js";
@@ -22,6 +23,8 @@ interface Props {
   userName: string;
   /** Present only when reached via a public /watch/:shareToken link. */
   shareContext?: ShareRequestContext;
+  /** When provided, the Join Call button renders here (e.g. the owner page's top nav bar) instead of in the row above the canvas. */
+  joinCallSlot?: HTMLElement | null;
   onMembershipChanged?: () => void;
   onBoardDeleted?: () => void;
 }
@@ -32,7 +35,16 @@ interface Props {
  * (viewer/WatchPage.tsx) — everything except each page's own top-bar chrome
  * (owner controls vs. a plain "watching via public link" banner).
  */
-export function BoardExperience({ boardId, role, userId, userName, shareContext, onMembershipChanged, onBoardDeleted }: Props) {
+export function BoardExperience({
+  boardId,
+  role,
+  userId,
+  userName,
+  shareContext,
+  joinCallSlot,
+  onMembershipChanged,
+  onBoardDeleted,
+}: Props) {
   const { doc, provider } = useYjsDocument(boardId, shareContext);
   const { shapes, addShape, updateShape, removeShape } = useYShapes(doc);
   const preferredColor = useMemo(() => colorForUser(userId ?? "guest"), [userId]);
@@ -103,19 +115,24 @@ export function BoardExperience({ boardId, role, userId, userName, shareContext,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [boardId]);
 
+  const joinCallControls = canPublish ? (
+    <>
+      <JoinCallButton
+        isJoined={isJoined}
+        othersInCallCount={callParticipantCount}
+        onJoin={handleJoinCall}
+        onLeave={handleLeaveCall}
+      />
+      {callError && <span style={{ fontSize: 12, color: "#e03131" }}>{callError}</span>}
+    </>
+  ) : null;
+
   return (
     <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
+      {joinCallSlot && joinCallControls ? createPortal(joinCallControls, joinCallSlot) : null}
       <div style={{ display: "flex", flexDirection: "column", flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, alignItems: "center", padding: 8 }}>
-          {canPublish && (
-            <JoinCallButton
-              isJoined={isJoined}
-              othersInCallCount={callParticipantCount}
-              onJoin={handleJoinCall}
-              onLeave={handleLeaveCall}
-            />
-          )}
-          {callError && <span style={{ fontSize: 12, color: "#e03131" }}>{callError}</span>}
+          {!joinCallSlot && joinCallControls}
           <PresenceList self={localPresence} peers={peers} viewerPeers={viewerPeers} />
         </div>
         {isJoined && (
@@ -129,7 +146,7 @@ export function BoardExperience({ boardId, role, userId, userName, shareContext,
             onLeave={handleLeaveCall}
           />
         )}
-        <div style={{ flex: 1 }}>
+        <div style={{ flex: 1, minHeight: 0, minWidth: 0 }}>
           <CanvasStage
             shapes={shapes}
             peers={peers}

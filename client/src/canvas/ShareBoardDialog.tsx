@@ -1,10 +1,18 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { useBoardShare } from "./useBoardShare.js";
 
 export function ShareBoardDialog({ boardId }: { boardId: string }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const { enabled, token, loading, enable, disable, regenerate } = useBoardShare(boardId);
   const url = token ? `${window.location.origin}/watch/${token}` : null;
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    if (!url) return;
+    await navigator.clipboard.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
     <>
@@ -22,7 +30,12 @@ export function ShareBoardDialog({ boardId }: { boardId: string }) {
                 Anyone with this link can watch this board's canvas and call, and read chat. Logged-in visitors can
                 also chat.
               </p>
-              <input readOnly value={url} onFocus={(e) => e.target.select()} style={{ width: "100%" }} />
+              <div style={{ display: "flex", gap: 8 }}>
+                <input readOnly value={url} onFocus={(e) => e.target.select()} style={{ flex: 1 }} />
+                <button type="button" onClick={handleCopy}>
+                  {copied ? "Copied!" : "Copy"}
+                </button>
+              </div>
               <div style={{ display: "flex", gap: 8 }}>
                 <button type="button" onClick={regenerate}>
                   Regenerate link

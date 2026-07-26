@@ -9,7 +9,6 @@ import type { PresenceState } from "./yjs/useAwareness.js";
 const DEFAULT_STROKE = "#1e1e1e";
 const DEFAULT_STROKE_WIDTH = 2;
 const MIN_DRAG_DISTANCE = 3;
-const TOOLBAR_HEIGHT = 52;
 
 interface Props {
   shapes: Shape[];
@@ -22,14 +21,26 @@ interface Props {
   onCursorMove: (cursor: { x: number; y: number } | null) => void;
 }
 
-function useWindowSize() {
-  const [size, setSize] = useState({ width: window.innerWidth, height: window.innerHeight - TOOLBAR_HEIGHT });
+// Sizes the stage to the space its own container actually has, not the full
+// window — the container shrinks when the chat sidebar is open, and the
+// canvas must shrink with it. Using window.innerWidth here previously made
+// the (invisible) canvas 300px wider than its box; because Konva's stage div
+// is `position: relative`, CSS paints positioned elements above plain
+// in-flow siblings regardless of DOM order, so that overflow silently sat on
+// top of the chat panel and swallowed every click meant for it.
+function useContainerSize(ref: { current: HTMLDivElement | null }) {
+  const [size, setSize] = useState({ width: 0, height: 0 });
 
   useEffect(() => {
-    const onResize = () => setSize({ width: window.innerWidth, height: window.innerHeight - TOOLBAR_HEIGHT });
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, []);
+    const el = ref.current;
+    if (!el) return;
+    const update = () => setSize({ width: el.clientWidth, height: el.clientHeight });
+    update();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [ref]);
 
   return size;
 }
@@ -64,11 +75,14 @@ export function CanvasStage({
   const [draft, setDraft] = useState<Shape | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const isDrawing = useRef(false);
-  const size = useWindowSize();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const size = useContainerSize(containerRef);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (readOnly) return;
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
       if ((e.key === "Delete" || e.key === "Backspace") && selectedId) {
         onRemoveShape(selectedId);
         setSelectedId(null);
@@ -209,29 +223,31 @@ export function CanvasStage({
   };
 
   return (
-    <KonvaStage
-      width={size.width}
-      height={size.height}
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-    >
-      <Layer>
-        {shapes.map((shape) => (
-          <ShapeRenderer
-            key={shape.id}
-            shape={shape}
-            draggable={!readOnly && activeTool === "select"}
-            isSelected={shape.id === selectedId}
-            onDragEnd={(x, y) => onUpdateShape(shape.id, { x, y })}
-            onClick={() => {
-              if (!readOnly && activeTool === "select") setSelectedId(shape.id);
-            }}
-          />
-        ))}
-        {draft && <ShapeRenderer shape={draft} draggable={false} isSelected={false} onDragEnd={() => {}} onClick={() => {}} />}
-      </Layer>
-      <RemoteCursors peers={peers} />
-    </KonvaStage>
+    <div ref={containerRef} style={{ width: "100%", height: "100%" }}>
+      <KonvaStage
+        width={size.width}
+        height={size.height}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+      >
+        <Layer>
+          {shapes.map((shape) => (
+            <ShapeRenderer
+              key={shape.id}
+              shape={shape}
+              draggable={!readOnly && activeTool === "select"}
+              isSelected={shape.id === selectedId}
+              onDragEnd={(x, y) => onUpdateShape(shape.id, { x, y })}
+              onClick={() => {
+                if (!readOnly && activeTool === "select") setSelectedId(shape.id);
+              }}
+            />
+          ))}
+          {draft && <ShapeRenderer shape={draft} draggable={false} isSelected={false} onDragEnd={() => {}} onClick={() => {}} />}
+        </Layer>
+        <RemoteCursors peers={peers} />
+      </KonvaStage>
+    </div>
   );
 }

@@ -34,6 +34,7 @@ function BoardInner({ roomId }: { roomId: string }) {
   const { board, error: boardError, refresh: refreshBoard } = useBoard(roomId);
   const [boardDeleted, setBoardDeleted] = useState(false);
   const [membershipVersion, setMembershipVersion] = useState(0);
+  const [joinCallSlot, setJoinCallSlot] = useState<HTMLDivElement | null>(null);
 
   const userId = session?.user.id ?? null;
   const userName = session?.user.name || session?.user.email || "Guest";
@@ -68,6 +69,7 @@ function BoardInner({ roomId }: { roomId: string }) {
           {isViewer ? <span style={{ fontSize: 12, color: "#868e96" }}>👀 Viewing only</span> : <Toolbar />}
         </div>
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+          <div ref={setJoinCallSlot} style={{ display: "flex", gap: 8, alignItems: "center" }} />
           {board.role === "owner" && <ShareBoardDialog boardId={roomId} />}
           {board.role === "owner" && <InviteMemberDialog boardId={roomId} membershipVersion={membershipVersion} />}
         </div>
@@ -77,6 +79,7 @@ function BoardInner({ roomId }: { roomId: string }) {
         role={board.role}
         userId={userId}
         userName={userName}
+        joinCallSlot={joinCallSlot}
         onMembershipChanged={() => {
           refreshBoard();
           setMembershipVersion((v) => v + 1);
