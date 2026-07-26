@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Room, RoomEvent, Track } from "livekit-client";
 import type { CallTokenResponse } from "@cursive/shared";
 import { api } from "../api/client.js";
+import { shareHeaders, type ShareRequestContext } from "../viewer/shareContext.js";
 
 export interface CallParticipant {
   identity: string;
@@ -17,7 +18,7 @@ export interface CallParticipant {
   cameraEnabled: boolean;
 }
 
-export function useCall(boardId: string, canPublish: boolean) {
+export function useCall(boardId: string, canPublish: boolean, shareContext?: ShareRequestContext) {
   const roomRef = useRef<Room | null>(null);
   const isJoiningRef = useRef(false);
   const [isJoined, setIsJoined] = useState(false);
@@ -63,7 +64,9 @@ export function useCall(boardId: string, canPublish: boolean) {
     isJoiningRef.current = true;
 
     try {
-      const { token, url } = await api.get<CallTokenResponse>(`/api/boards/${boardId}/call-token`);
+      const { token, url } = await api.get<CallTokenResponse>(`/api/boards/${boardId}/call-token`, {
+        headers: shareHeaders(shareContext),
+      });
       const room = new Room();
       roomRef.current = room;
 
@@ -121,7 +124,7 @@ export function useCall(boardId: string, canPublish: boolean) {
     } finally {
       isJoiningRef.current = false;
     }
-  }, [boardId, canPublish, isJoined, syncParticipants]);
+  }, [boardId, canPublish, isJoined, syncParticipants, shareContext]);
 
   const leave = useCallback(() => {
     roomRef.current?.disconnect();
