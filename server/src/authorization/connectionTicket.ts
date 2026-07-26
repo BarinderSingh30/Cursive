@@ -12,8 +12,9 @@ import { env } from "../env.js";
  * replayed as a chat ticket, or vice versa.
  */
 export type ConnectionTicketPayload =
-  | { purpose: "board-sync"; userId: string; boardId: string; role: BoardRole }
-  | { purpose: "chat"; userId: string };
+  | { purpose: "board-sync"; userId: string; boardId: string; role: BoardRole; anonymous: boolean }
+  | { purpose: "chat"; userId: string }
+  | { purpose: "board-chat"; userId: string; boardId: string; role: BoardRole; anonymous: boolean };
 
 const TICKET_TTL_SECONDS = 300;
 
