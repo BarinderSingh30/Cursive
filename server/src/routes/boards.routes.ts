@@ -34,6 +34,18 @@ function visitorIdentity(req: import("express").Request, res: import("express").
   return `anon:${req.header("x-anon-id") || randomUUID()}`;
 }
 
+/**
+ * A share-link visitor picks their own call display name via the
+ * `x-anon-name` header — always prefixed with "Guest: " so it can never be
+ * confused with a real registered user's name in the call UI, and stripped
+ * of control characters and length-capped since it's otherwise unvalidated
+ * user input rendered directly to other participants.
+ */
+function anonDisplayName(req: import("express").Request): string {
+  const raw = (req.header("x-anon-name") ?? "").replace(/[\x00-\x1f\x7f]/g, "").trim();
+  return `Guest: ${raw.slice(0, 40) || "Guest"}`;
+}
+
 export const boardsRouter = Router();
 
 boardsRouter.post("/", requireAuth, async (req, res) => {
@@ -142,7 +154,7 @@ boardsRouter.get("/:boardId/call-token", requireBoardRole("viewer"), async (req,
   const identity = visitorIdentity(req, res);
   const userName = userId
     ? await prisma.user.findUniqueOrThrow({ where: { id: userId } }).then((u) => u.name ?? u.email)
-    : req.header("x-anon-name") || "Guest";
+    : anonDisplayName(req);
 
   const token = await mintCallToken({
     userId: identity,
