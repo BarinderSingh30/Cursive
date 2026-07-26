@@ -8,6 +8,7 @@ import {
   type PendingBoardInvite,
   type ShareLinkState,
   type ShareLinkInfo,
+  type BoardRole,
 } from "@cursive/shared";
 import { prisma } from "../db/prisma.js";
 import { orderedPair } from "../db/orderedPair.js";
@@ -18,6 +19,20 @@ import { mintCallToken } from "../call/callToken.js";
 import { env } from "../env.js";
 import { notifyBoardMembershipChanged, notifyBoardDeleted } from "../collab/hocuspocus.js";
 import { getSessionFromRequest } from "../auth/session.js";
+
+/**
+ * The identity string embedded in a connection ticket/call token: the real
+ * session user id when logged in, or a stable anon:<id> string for a
+ * share-link visitor. The client generates and persists that id itself
+ * (see client/src/viewer/useAnonIdentity.ts) so it stays stable across
+ * reconnects on the same browser — the random() fallback only fires if a
+ * caller somehow omits the header.
+ */
+function visitorIdentity(req: import("express").Request, res: import("express").Response): string {
+  const userId = res.locals.userId as string | null;
+  if (userId) return userId;
+  return `anon:${req.header("x-anon-id") || randomUUID()}`;
+}
 
 export const boardsRouter = Router();
 
@@ -114,25 +129,26 @@ boardsRouter.delete("/:boardId", requireBoardRole("owner"), async (req, res) => 
 boardsRouter.get("/:boardId/sync-ticket", requireBoardRole("viewer"), async (req, res) => {
   const ticket = mintConnectionTicket({
     purpose: "board-sync",
-    userId: res.locals.userId as string,
+    userId: visitorIdentity(req, res),
+    anonymous: res.locals.anonymous as boolean,
     boardId: req.params.boardId,
-    role: res.locals.boardRole,
+    role: res.locals.boardRole as BoardRole,
   });
   res.json({ ticket });
 });
 
-/**
- * requireBoardRole only puts userId/boardRole on res.locals (no display
- * name) — look the user up the same way GET /:boardId/members already does
- * (m.user.name) to give LiveKit something to show on the participant's tile.
- */
 boardsRouter.get("/:boardId/call-token", requireBoardRole("viewer"), async (req, res) => {
-  const user = await prisma.user.findUniqueOrThrow({ where: { id: res.locals.userId as string } });
+  const userId = res.locals.userId as string | null;
+  const identity = visitorIdentity(req, res);
+  const userName = userId
+    ? await prisma.user.findUniqueOrThrow({ where: { id: userId } }).then((u) => u.name ?? u.email)
+    : req.header("x-anon-name") || "Guest";
+
   const token = await mintCallToken({
-    userId: res.locals.userId as string,
-    userName: user.name ?? user.email,
+    userId: identity,
+    userName,
     boardId: req.params.boardId,
-    role: res.locals.boardRole,
+    role: res.locals.boardRole as BoardRole,
   });
   res.json({ token, url: env.LIVEKIT_URL });
 });
