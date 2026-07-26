@@ -19,6 +19,7 @@ import { mintCallToken } from "../call/callToken.js";
 import { env } from "../env.js";
 import { notifyBoardMembershipChanged, notifyBoardDeleted } from "../collab/hocuspocus.js";
 import { getSessionFromRequest } from "../auth/session.js";
+import { listBoardMessages } from "../boardChat/messages.js";
 
 /**
  * The identity string embedded in a connection ticket/call token: the real
@@ -163,6 +164,23 @@ boardsRouter.get("/:boardId/call-token", requireBoardRole("viewer"), async (req,
     role: res.locals.boardRole as BoardRole,
   });
   res.json({ token, url: env.LIVEKIT_URL });
+});
+
+boardsRouter.get("/:boardId/chat/ticket", requireBoardRole("viewer"), async (req, res) => {
+  const ticket = mintConnectionTicket({
+    purpose: "board-chat",
+    userId: visitorIdentity(req, res),
+    anonymous: res.locals.anonymous as boolean,
+    boardId: req.params.boardId,
+    role: res.locals.boardRole as BoardRole,
+  });
+  res.json({ ticket });
+});
+
+boardsRouter.get("/:boardId/chat/messages", requireBoardRole("viewer"), async (req, res) => {
+  const before = typeof req.query.before === "string" ? req.query.before : undefined;
+  const messages = await listBoardMessages(req.params.boardId, before);
+  res.json(messages);
 });
 
 /**
