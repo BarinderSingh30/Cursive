@@ -8,5 +8,6 @@ export * from "./api/chat.schemas.js";
 export * from "./api/call.schemas.js";
 export * from "./ws-events/chat-events.js";
 export * from "./api/boardShare.schemas.js";
+export * from "./api/home.schemas.js";
 export * from "./api/boardChat.schemas.js";
 export * from "./ws-events/board-chat-events.js";

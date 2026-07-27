@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "Board" ADD COLUMN     "listed" BOOLEAN NOT NULL DEFAULT true,
+ADD COLUMN     "totalViews" INTEGER NOT NULL DEFAULT 0,
+ALTER COLUMN "shareEnabled" SET DEFAULT true;

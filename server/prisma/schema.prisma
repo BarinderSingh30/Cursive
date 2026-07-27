@@ -94,8 +94,17 @@ model Board {
   // A public, no-account-required watch link. Checked live against the DB
   // (not a signed token) so disabling/regenerating takes effect immediately
   // — see docs/superpowers/specs/2026-07-18-phase5-anonymous-viewer-links-design.md.
-  shareEnabled Boolean @default(false)
+  // Both default true now — a brand-new board is watchable and listed on
+  // the public Home page immediately, no manual "enable sharing" step. The
+  // existing regenerate/disable actions still fully control the link.
+  shareEnabled Boolean @default(true)
   shareToken   String? @unique
+  // Controls Home page visibility only — never link-based access. A board
+  // with listed=false is still watchable by anyone holding its share link.
+  listed       Boolean @default(true)
+  // Persisted view counter, incremented once per non-owner watch session
+  // (see server/src/collab/viewCounting.ts).
+  totalViews   Int     @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

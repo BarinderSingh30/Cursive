@@ -14,3 +14,8 @@ export const shareLinkInfoSchema = z.object({
   hasMembership: z.boolean(),
 });
 export type ShareLinkInfo = z.infer<typeof shareLinkInfoSchema>;
+
+export const boardListingStateSchema = z.object({
+  listed: z.boolean(),
+});
+export type BoardListingState = z.infer<typeof boardListingStateSchema>;
