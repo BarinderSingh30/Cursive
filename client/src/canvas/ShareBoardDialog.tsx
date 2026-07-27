@@ -3,7 +3,8 @@ import { useBoardShare } from "./useBoardShare.js";
 
 export function ShareBoardDialog({ boardId }: { boardId: string }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const { enabled, token, loading, enable, disable, regenerate } = useBoardShare(boardId);
+  const { enabled, token, listed, loading, enable, disable, regenerate, makePublic, makePrivate } =
+    useBoardShare(boardId);
   const url = token ? `${window.location.origin}/watch/${token}` : null;
   const [copied, setCopied] = useState(false);
 
@@ -22,6 +23,22 @@ export function ShareBoardDialog({ boardId }: { boardId: string }) {
       <dialog ref={dialogRef} style={{ borderRadius: 8, border: "1px solid #e0e0e0", padding: 20 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 16, minWidth: 320 }}>
           <h3 style={{ margin: 0 }}>Public watch link</h3>
+          {!loading && (
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                fontSize: 13,
+                color: "#495057",
+              }}
+            >
+              <span>{listed ? "Listed on the public Home page" : "Private — hidden from Home page"}</span>
+              <button type="button" onClick={listed ? makePrivate : makePublic}>
+                {listed ? "Make private" : "Make public"}
+              </button>
+            </div>
+          )}
           {loading ? (
             <p style={{ margin: 0, color: "#868e96" }}>Loading…</p>
           ) : enabled && url ? (
