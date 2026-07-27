@@ -35,3 +35,6 @@ LEARNING.md
 
 # Brainstorming visual-companion scratch files (not part of the app)
 .superpowers/
+
+# Manual-testing artifact containing a real session token — never commit
+cookies.txt
