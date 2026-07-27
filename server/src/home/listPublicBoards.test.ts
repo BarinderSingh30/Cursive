@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { afterEach, describe, expect, it } from "vitest";
 import { prisma } from "../db/prisma.js";
 import { listPublicBoards } from "./listPublicBoards.js";
@@ -14,7 +15,9 @@ describe("listPublicBoards", () => {
     const owner = await prisma.user.create({
       data: { email: "owner@list-public-boards-test.local", emailVerified: true, name: "Owner" },
     });
-    await prisma.board.create({ data: { name: "Public Board", ownerId: owner.id, listed: true } });
+    await prisma.board.create({
+      data: { name: "Public Board", ownerId: owner.id, listed: true, shareToken: randomUUID() },
+    });
     await prisma.board.create({ data: { name: "Private Board", ownerId: owner.id, listed: false } });
 
     const { boards } = await listPublicBoards(undefined, [owner.id]);
@@ -39,9 +42,13 @@ describe("listPublicBoards", () => {
     const owner = await prisma.user.create({
       data: { email: "owner3@list-public-boards-test.local", emailVerified: true, name: "Owner" },
     });
-    await prisma.board.create({ data: { name: "Older, more views", ownerId: owner.id, totalViews: 10 } });
+    await prisma.board.create({
+      data: { name: "Older, more views", ownerId: owner.id, totalViews: 10, shareToken: randomUUID() },
+    });
     await new Promise((resolve) => setTimeout(resolve, 5));
-    await prisma.board.create({ data: { name: "Newer, fewer views", ownerId: owner.id, totalViews: 2 } });
+    await prisma.board.create({
+      data: { name: "Newer, fewer views", ownerId: owner.id, totalViews: 2, shareToken: randomUUID() },
+    });
 
     const { boards } = await listPublicBoards(undefined, [owner.id]);
 
@@ -53,7 +60,7 @@ describe("listPublicBoards", () => {
       data: { email: "owner4@list-public-boards-test.local", emailVerified: true, name: "Owner" },
     });
     for (let i = 0; i < 3; i += 1) {
-      await prisma.board.create({ data: { name: `Board ${i}`, ownerId: owner.id } });
+      await prisma.board.create({ data: { name: `Board ${i}`, ownerId: owner.id, shareToken: randomUUID() } });
     }
 
     const page1 = await listPublicBoards(2, [owner.id]);
@@ -69,7 +76,9 @@ describe("listPublicBoards", () => {
     const owner = await prisma.user.create({
       data: { email: "owner5@list-public-boards-test.local", emailVerified: true, name: "Ada" },
     });
-    const board = await prisma.board.create({ data: { name: "Board", ownerId: owner.id } });
+    const board = await prisma.board.create({
+      data: { name: "Board", ownerId: owner.id, shareToken: randomUUID() },
+    });
 
     const { boards } = await listPublicBoards(undefined, [owner.id]);
 

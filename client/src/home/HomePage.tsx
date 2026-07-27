@@ -5,7 +5,7 @@ import { BoardListingCard } from "./BoardListingCard.js";
 
 export function HomePage() {
   const { data: session } = useSession();
-  const { boards, hasMore, loading, loadMore } = useHomeBoards();
+  const { boards, hasMore, loading, error, loadMore, retry } = useHomeBoards();
 
   return (
     <div style={{ maxWidth: 960, margin: "40px auto", padding: "0 16px" }}>
@@ -14,7 +14,14 @@ export function HomePage() {
         {session ? <Link to="/dashboard">Dashboard</Link> : <Link to="/login">Log in</Link>}
       </div>
 
-      {loading ? (
+      {error ? (
+        <div>
+          <p>Couldn't load boards. Please try again.</p>
+          <button type="button" onClick={retry}>
+            Retry
+          </button>
+        </div>
+      ) : loading ? (
         <p>Loading…</p>
       ) : boards.length === 0 ? (
         <p>No public boards yet.</p>

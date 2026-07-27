@@ -16,6 +16,7 @@ export async function listPublicBoards(limit: number = PAGE_SIZE, ownerIds?: str
     where: {
       listed: true,
       shareEnabled: true,
+      shareToken: { not: null },
       ...(ownerIds ? { ownerId: { in: ownerIds } } : {}),
     },
     include: { owner: true },
@@ -25,11 +26,12 @@ export async function listPublicBoards(limit: number = PAGE_SIZE, ownerIds?: str
     .map((board) => ({
       id: board.id,
       name: board.name,
-      ownerName: board.owner.name ?? board.owner.email,
-      // Safe: the where clause above guarantees shareEnabled === true, and
-      // every board with shareEnabled true also has a shareToken (set
-      // together at creation and by every /share/* route).
-      shareToken: board.shareToken as string,
+      ownerName: board.owner.name ?? "Anonymous",
+      // Safe: the where clause above guarantees shareToken is non-null.
+      // Prisma's generated type doesn't narrow through `where`, so a
+      // non-null assertion (rather than `as string`) documents that the
+      // guarantee comes from the query, not a blind cast.
+      shareToken: board.shareToken!,
       liveViewerCount: getLiveViewerCount(board.id),
       totalViews: board.totalViews,
       createdAt: board.createdAt,

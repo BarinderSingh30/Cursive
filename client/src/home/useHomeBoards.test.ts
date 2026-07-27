@@ -55,6 +55,25 @@ describe("useHomeBoards", () => {
     expect(result.current.loading).toBe(false);
   });
 
+  it("sets error on a failed load and clears it on a successful retry", async () => {
+    const board1 = board("1");
+    (api.get as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error("network down"));
+
+    const { result } = renderHook(() => useHomeBoards());
+
+    await waitFor(() => expect(result.current.error).toBe(true));
+    expect(result.current.loading).toBe(false);
+
+    (api.get as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ boards: [board1], hasMore: false });
+
+    await act(async () => {
+      result.current.retry();
+    });
+
+    await waitFor(() => expect(result.current.error).toBe(false));
+    expect(result.current.boards).toEqual([board1]);
+  });
+
   it("loadMore increases the limit and re-fetches", async () => {
     (api.get as ReturnType<typeof vi.fn>).mockImplementation((path: string) => {
       const url = new URL(path, "http://localhost");
