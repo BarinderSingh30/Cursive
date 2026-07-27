@@ -34,7 +34,7 @@ export const hocuspocus = Server.configure({
 
     return { userId: payload.userId, role: payload.role };
   },
-  onConnect: async ({ context, documentName }) => {
+  connected: async ({ context, documentName }) => {
     await recordBoardView(documentName, context.role);
   },
 });
