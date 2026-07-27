@@ -11,9 +11,13 @@ const PAGE_SIZE = 24;
  * in Hocuspocus's in-memory state, not the database — fine at this project's
  * scale, and cross-instance correctness is explicitly Phase 8's job.
  */
-export async function listPublicBoards(limit: number = PAGE_SIZE): Promise<HomeBoardsPage> {
+export async function listPublicBoards(limit: number = PAGE_SIZE, ownerIds?: string[]): Promise<HomeBoardsPage> {
   const boards = await prisma.board.findMany({
-    where: { listed: true, shareEnabled: true },
+    where: {
+      listed: true,
+      shareEnabled: true,
+      ...(ownerIds ? { ownerId: { in: ownerIds } } : {}),
+    },
     include: { owner: true },
   });
 
