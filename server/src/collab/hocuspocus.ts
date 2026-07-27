@@ -2,6 +2,7 @@ import { Server } from "@hocuspocus/server";
 import { roleAtLeast } from "@cursive/shared";
 import { persistenceExtensions } from "./persistence.js";
 import { verifyConnectionTicket } from "../authorization/connectionTicket.js";
+import { recordBoardView } from "./viewCounting.js";
 
 /**
  * Hosts every board's Yjs document and relays sync updates between clients.
@@ -33,6 +34,9 @@ export const hocuspocus = Server.configure({
 
     return { userId: payload.userId, role: payload.role };
   },
+  onConnect: async ({ context, documentName }) => {
+    await recordBoardView(documentName, context.role);
+  },
 });
 
 /**
@@ -53,4 +57,16 @@ export function notifyBoardMembershipChanged(boardId: string) {
  */
 export function notifyBoardDeleted(boardId: string) {
   hocuspocus.documents.get(boardId)?.broadcastStateless(JSON.stringify({ type: "board-deleted" }));
+}
+
+/**
+ * Live viewer count for the Home page: every currently-open connection to
+ * this board except the owner's own, mirroring recordBoardView's exclusion.
+ * Returns 0 if nobody's connected — Hocuspocus only keeps a Document in
+ * memory while at least one connection is open.
+ */
+export function getLiveViewerCount(boardId: string): number {
+  const doc = hocuspocus.documents.get(boardId);
+  if (!doc) return 0;
+  return doc.getConnections().filter((connection) => connection.context?.role !== "owner").length;
 }
