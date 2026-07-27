@@ -32,6 +32,7 @@ export function DashboardPage() {
         <h1 style={{ margin: 0 }}>Your boards</h1>
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
           <span style={{ fontSize: 14, color: "#868e96" }}>{session?.user.name || session?.user.email}</span>
+          <Link to="/">Home</Link>
           <NotificationsButton onAccepted={refreshBoards} />
           <Link to="/friends" style={{ position: "relative" }}>
             Friends

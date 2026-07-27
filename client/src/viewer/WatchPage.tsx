@@ -1,9 +1,33 @@
-import { Navigate, useParams } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import { ActiveToolProvider } from "../canvas/tools/useActiveTool.js";
 import { BoardExperience } from "../canvas/BoardExperience.js";
 import { useSession } from "../auth/authClient.js";
 import { useShareLink } from "./useShareLink.js";
 import { useAnonIdentity } from "./useAnonIdentity.js";
+
+const REDIRECT_DELAY_MS = 2500;
+
+function BoardDeletedRedirect() {
+  return (
+    <div
+      style={{
+        height: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 16,
+        textAlign: "center",
+      }}
+    >
+      <p style={{ fontSize: 18, margin: 0 }}>The owner ended this board. Taking you back to Home…</p>
+      <Link to="/">
+        <button type="button">Go to Home now</button>
+      </Link>
+    </div>
+  );
+}
 
 function LinkNotActive() {
   return (
@@ -53,10 +77,19 @@ function AnonNamePrompt({ onSubmit }: { onSubmit: (name: string) => void }) {
 
 export function WatchPage() {
   const { shareToken } = useParams<{ shareToken: string }>();
+  const navigate = useNavigate();
   const { data: session, isPending } = useSession();
   const { info, notFound, loading } = useShareLink(shareToken!);
   const { anonId, anonName, setAnonName } = useAnonIdentity(shareToken!);
+  const [boardDeleted, setBoardDeleted] = useState(false);
 
+  useEffect(() => {
+    if (!boardDeleted) return;
+    const timeout = setTimeout(() => navigate("/"), REDIRECT_DELAY_MS);
+    return () => clearTimeout(timeout);
+  }, [boardDeleted, navigate]);
+
+  if (boardDeleted) return <BoardDeletedRedirect />;
   if (isPending || loading) return <p style={{ padding: 24 }}>Loading…</p>;
   if (notFound) return <LinkNotActive />;
   if (!info) return null;
@@ -93,6 +126,7 @@ export function WatchPage() {
           userId={userId}
           userName={userName ?? "Guest"}
           shareContext={{ shareToken: shareToken!, anonId, anonName: anonName ?? undefined }}
+          onBoardDeleted={() => setBoardDeleted(true)}
         />
       </div>
     </ActiveToolProvider>
