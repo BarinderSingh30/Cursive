@@ -14,7 +14,7 @@ export function HomePage() {
         {session ? <Link to="/dashboard">Dashboard</Link> : <Link to="/login">Log in</Link>}
       </div>
 
-      {error ? (
+      {error && boards.length === 0 ? (
         <div>
           <p>Couldn't load boards. Please try again.</p>
           <button type="button" onClick={retry}>
@@ -27,6 +27,11 @@ export function HomePage() {
         <p>No public boards yet.</p>
       ) : (
         <>
+          {error && (
+            <p style={{ color: "#868e96", fontSize: 13, marginBottom: 12 }}>
+              Having trouble updating the list — showing the last known boards.
+            </p>
+          )}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 12 }}>
             {boards.map((board) => (
               <BoardListingCard key={board.id} board={board} />
