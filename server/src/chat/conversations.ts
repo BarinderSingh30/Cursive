@@ -166,9 +166,16 @@ export async function markConversationRead(userId: string, conversationId: strin
 
 /** Hides this conversation's history, up to now, from this user only. Never affects other members. */
 export async function clearConversationHistory(userId: string, conversationId: string): Promise<void> {
+  // `clearedAt` must come from the database's own clock, not the app
+  // server's — `Message.createdAt` is set via Prisma's `@default(now())`,
+  // which also runs on the DB. Node's `new Date()` and Postgres's clock can
+  // drift by a few milliseconds even on the same machine, so a message
+  // recorded immediately before a clear could get a `createdAt` that reads
+  // as later than an app-clock `clearedAt`, staying wrongly visible.
+  const [{ now }] = await prisma.$queryRaw<{ now: Date }[]>`SELECT NOW() AS now`;
   await prisma.conversationMember.update({
     where: { conversationId_userId: { conversationId, userId } },
-    data: { clearedAt: new Date() },
+    data: { clearedAt: now },
   });
 }
 
