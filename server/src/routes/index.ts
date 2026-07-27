@@ -3,6 +3,7 @@ import { boardsRouter } from "./boards.routes.js";
 import { friendsRouter } from "./friends.routes.js";
 import { boardInvitesRouter } from "./boardInvites.routes.js";
 import { chatRouter } from "./chat.routes.js";
+import { homeRouter } from "./home.routes.js";
 
 export const apiRouter = Router();
 
@@ -10,3 +11,4 @@ apiRouter.use("/boards", boardsRouter);
 apiRouter.use("/friends", friendsRouter);
 apiRouter.use("/board-invites", boardInvitesRouter);
 apiRouter.use("/chat", chatRouter);
+apiRouter.use("/home", homeRouter);
