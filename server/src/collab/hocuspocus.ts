@@ -35,7 +35,11 @@ export const hocuspocus = Server.configure({
     return { userId: payload.userId, role: payload.role };
   },
   connected: async ({ context, documentName }) => {
-    await recordBoardView(documentName, context.role);
+    try {
+      await recordBoardView(documentName, context.role);
+    } catch (error) {
+      console.error(`Failed to record board view for ${documentName}:`, error);
+    }
   },
 });
 
