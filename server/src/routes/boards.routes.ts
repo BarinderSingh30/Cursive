@@ -8,6 +8,7 @@ import {
   type PendingBoardInvite,
   type ShareLinkState,
   type ShareLinkInfo,
+  type BoardListingState,
   type BoardRole,
 } from "@cursive/shared";
 import { prisma } from "../db/prisma.js";
@@ -61,6 +62,8 @@ boardsRouter.post("/", requireAuth, async (req, res) => {
     data: {
       name: parsed.data.name,
       ownerId,
+      shareEnabled: true,
+      shareToken: randomUUID(),
       members: { create: { userId: ownerId, role: "owner" } },
     },
   });
@@ -127,6 +130,24 @@ boardsRouter.post("/:boardId/share/regenerate", requireBoardRole("owner"), async
 boardsRouter.post("/:boardId/share/disable", requireBoardRole("owner"), async (req, res) => {
   await prisma.board.update({ where: { id: req.params.boardId }, data: { shareEnabled: false } });
   const body: ShareLinkState = { enabled: false, token: null };
+  res.json(body);
+});
+
+boardsRouter.get("/:boardId/listed", requireBoardRole("owner"), async (req, res) => {
+  const board = await prisma.board.findUniqueOrThrow({ where: { id: req.params.boardId } });
+  const body: BoardListingState = { listed: board.listed };
+  res.json(body);
+});
+
+boardsRouter.post("/:boardId/listed/enable", requireBoardRole("owner"), async (req, res) => {
+  const board = await prisma.board.update({ where: { id: req.params.boardId }, data: { listed: true } });
+  const body: BoardListingState = { listed: board.listed };
+  res.json(body);
+});
+
+boardsRouter.post("/:boardId/listed/disable", requireBoardRole("owner"), async (req, res) => {
+  const board = await prisma.board.update({ where: { id: req.params.boardId }, data: { listed: false } });
+  const body: BoardListingState = { listed: board.listed };
   res.json(body);
 });
 
