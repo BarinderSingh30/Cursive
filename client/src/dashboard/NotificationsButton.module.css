@@ -1,0 +1,62 @@
+.bellWrap {
+  position: relative;
+}
+
+.bell {
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-round);
+  background: var(--paper-sunk);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+  padding: 0;
+}
+
+.bell:hover {
+  background: var(--paper-line);
+}
+
+.badge {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  background: var(--alert);
+  border-radius: var(--radius-round);
+  width: 8px;
+  height: 8px;
+  box-shadow: 0 0 0 2px var(--paper);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 300px;
+}
+
+.empty {
+  font-family: var(--font-body);
+  color: var(--ink-soft);
+  margin: 0;
+}
+
+.item {
+  border-bottom: 1px solid var(--paper-line);
+  padding-bottom: var(--space-2);
+}
+
+.itemText {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--ink);
+  margin: 0 0 var(--space-2);
+}
+
+.itemActions {
+  display: flex;
+  gap: var(--space-2);
+}

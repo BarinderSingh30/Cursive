@@ -7,23 +7,15 @@ import { ShareBoardDialog } from "./ShareBoardDialog.js";
 import { BoardExperience } from "./BoardExperience.js";
 import { useBoard } from "./useBoard.js";
 import { useSession } from "../auth/authClient.js";
+import { Button } from "../ui/Button.js";
+import styles from "./Board.module.css";
 
 function BoardDeletedOverlay() {
   return (
-    <div
-      style={{
-        height: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 16,
-        textAlign: "center",
-      }}
-    >
-      <p style={{ fontSize: 18, margin: 0 }}>The owner deleted this board.</p>
+    <div className={styles.deletedOverlay}>
+      <p className={styles.deletedText}>The owner deleted this board.</p>
       <Link to="/dashboard">
-        <button type="button">Go back to dashboard</button>
+        <Button variant="secondary">Go back to dashboard</Button>
       </Link>
     </div>
   );
@@ -50,29 +42,25 @@ function BoardInner({ roomId }: { roomId: string }) {
   }, [boardError, boardDeleted]);
 
   if (boardDeleted) return <BoardDeletedOverlay />;
-  if (!board) return <p style={{ padding: 24 }}>Loading…</p>;
+  if (!board) return <p className={styles.loading}>Loading…</p>;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          padding: 8,
-          borderBottom: "1px solid #e0e0e0",
-        }}
-      >
-        <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
-          <Link to="/dashboard">← Boards</Link>
-          <strong>{board.name}</strong>
-          {isViewer ? <span style={{ fontSize: 12, color: "#868e96" }}>👀 Viewing only</span> : <Toolbar />}
+    <div className={styles.page}>
+      <div className={styles.bar}>
+        <div className={styles.row1}>
+          <div className={styles.titleGroup}>
+            <Link to="/dashboard" className={styles.backLink}>
+              ← Boards
+            </Link>
+            <span className={styles.title}>{board.name}</span>
+          </div>
+          <div className={styles.actionGroup}>
+            <div ref={setJoinCallSlot} className={styles.actionGroup} />
+            {board.role === "owner" && <ShareBoardDialog boardId={roomId} />}
+            {board.role === "owner" && <InviteMemberDialog boardId={roomId} membershipVersion={membershipVersion} />}
+          </div>
         </div>
-        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-          <div ref={setJoinCallSlot} style={{ display: "flex", gap: 8, alignItems: "center" }} />
-          {board.role === "owner" && <ShareBoardDialog boardId={roomId} />}
-          {board.role === "owner" && <InviteMemberDialog boardId={roomId} membershipVersion={membershipVersion} />}
-        </div>
+        <div className={styles.row2}>{isViewer ? <span className={styles.viewingBadge}>👀 Viewing only</span> : <Toolbar />}</div>
       </div>
       <BoardExperience
         boardId={roomId}

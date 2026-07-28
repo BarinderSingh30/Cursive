@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import styles from "./ConversationMenu.module.css";
 
 interface Props {
   onClearHistory: () => void;
@@ -29,42 +30,13 @@ export function ConversationMenu({ onClearHistory }: Props) {
   };
 
   return (
-    <div ref={containerRef} style={{ position: "relative" }}>
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-label="Conversation options"
-        style={{ border: "none", background: "transparent", cursor: "pointer", fontSize: 18, lineHeight: 1, padding: "0 4px" }}
-      >
+    <div ref={containerRef} className={styles.wrap}>
+      <button type="button" onClick={() => setOpen((v) => !v)} aria-label="Conversation options" className={styles.trigger}>
         ⋯
       </button>
       {open && (
-        <div
-          style={{
-            position: "absolute",
-            top: "100%",
-            right: 0,
-            background: "#fff",
-            border: "1px solid #e0e0e0",
-            borderRadius: 6,
-            boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-            zIndex: 1,
-            minWidth: 160,
-          }}
-        >
-          <button
-            type="button"
-            onClick={handleClearClick}
-            style={{
-              display: "block",
-              width: "100%",
-              textAlign: "left",
-              padding: "8px 12px",
-              border: "none",
-              background: "transparent",
-              cursor: "pointer",
-            }}
-          >
+        <div className={styles.menu}>
+          <button type="button" onClick={handleClearClick} className={styles.menuItem}>
             Clear chat history
           </button>
         </div>

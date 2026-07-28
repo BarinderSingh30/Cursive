@@ -1,0 +1,88 @@
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 300px;
+  font-family: var(--font-body);
+}
+
+.sectionHeading {
+  font-family: var(--font-hand);
+  font-size: 18px;
+  color: var(--ink);
+  margin: 0 0 var(--space-2);
+}
+
+.muted {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 13.5px;
+}
+
+.memberRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.roleTag {
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+.pendingRow {
+  color: var(--ink-soft);
+  font-size: 13.5px;
+  padding: 2px 0;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.fieldLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.select {
+  background: var(--paper);
+  border: 1.5px solid var(--paper-border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.radioGroup {
+  border: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  gap: var(--space-4);
+  font-size: 13.5px;
+  color: var(--ink);
+  font-weight: 400;
+}
+
+.error {
+  color: var(--alert);
+  margin: 0;
+  font-size: 13px;
+}
+
+.actions {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: flex-end;
+}

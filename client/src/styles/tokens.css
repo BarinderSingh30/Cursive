@@ -1,0 +1,101 @@
+/* "Pale Cork" design tokens.
+   Source of truth: design_handoff_cursive_pale_cork/DESIGN_HANDOFF.md (gitignored, local reference only).
+   Every value here is copied from that spec so the doc doesn't need to travel with the repo. */
+:root {
+  /* Surface & neutrals */
+  --cork: #e4c8a0;
+  --cork-speck-light: rgba(255, 255, 255, 0.3);
+  --cork-speck-dark: rgba(0, 0, 0, 0.08);
+  --paper: #fffdf6;
+  --paper-sunk: #fbf6e8;
+  --paper-line: #f0e8d6;
+  --paper-border: #efe3c6;
+  --ink: #4a3b2a;
+  --ink-soft: #8a7a5e;
+  --ink-faint: #a2937a;
+  --desk: #efebe3;
+
+  /* Brand / action */
+  --go: #3d7a5a;
+  --go-hover: #2c5c43;
+  --alert: #e24b3a;
+  --label: #b5451f;
+  --logo-indigo: #4f3cc9;
+  --logo-coral: #ff6b4a;
+
+  /* Sticky-note fills (decorative — rotate through them) */
+  --note-yellow: #fff6c9;
+  --note-yellow-text: #8a7a4e;
+  --note-pink: #ffdce4;
+  --note-pink-text: #96677a;
+  --note-mint: #d6f0e2;
+  --note-mint-text: #4e7a66;
+  --note-blue: #d9e8fa;
+  --note-blue-text: #4a6c8c;
+
+  /* Radii */
+  --radius-note: 3px;
+  --radius-sm: 5px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-pill: 999px;
+  --radius-round: 50%;
+
+  /* Shadows */
+  --shadow-paper-bar: 0 6px 16px -6px rgba(0, 0, 0, 0.4);
+  --shadow-paper-panel: 0 10px 22px -12px rgba(0, 0, 0, 0.45);
+  --shadow-note-cork: 0 8px 14px -8px rgba(0, 0, 0, 0.35);
+  --shadow-note-canvas: 0 8px 16px -8px rgba(0, 0, 0, 0.4);
+  --shadow-pill: 0 4px 10px -5px rgba(0, 0, 0, 0.4);
+  --shadow-modal: 0 12px 24px -10px rgba(0, 0, 0, 0.45);
+  --shadow-chat-bubble: 0 3px 8px -6px rgba(0, 0, 0, 0.35);
+  --shadow-button-pressed: 2px 2px 0 rgba(0, 0, 0, 0.25);
+  --shadow-button-pressed-active: 1px 1px 0 rgba(0, 0, 0, 0.25);
+  --shadow-screen-frame: 0 22px 50px -26px rgba(0, 0, 0, 0.45);
+
+  /* Spacing (4px base) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-screen-top: 26px;
+  --space-screen-x: 32px;
+  --space-screen-bottom: 44px;
+  --space-panel: 22px;
+  --space-card-gap: 18px;
+  --space-canvas-gap: 16px;
+  --space-nav-gap: 22px;
+
+  /* Typography */
+  --font-wordmark: "Ephesis", cursive;
+  --font-hand: "Patrick Hand", cursive;
+  --font-body: "Inter", system-ui, "Segoe UI", sans-serif;
+
+  /* Motion */
+  --transition-fast: 120ms ease-out;
+  --transition-hover: 150ms ease-out;
+}
+
+/* Cork texture — two radial-gradients, not an image */
+.cork-surface {
+  background-color: var(--cork);
+  background-image: radial-gradient(circle at 25% 35%, var(--cork-speck-light) 0 2px, transparent 3px),
+    radial-gradient(circle at 70% 65%, var(--cork-speck-dark) 0 2px, transparent 3px);
+  background-size: 19px 19px, 27px 27px;
+}
+
+/* Canvas dot grid */
+.canvas-dot-grid {
+  background-color: var(--paper);
+  background-image: radial-gradient(circle, #e7dfcb 1.4px, transparent 1.5px);
+  background-size: 24px 24px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --transition-fast: 0ms;
+    --transition-hover: 0ms;
+  }
+}

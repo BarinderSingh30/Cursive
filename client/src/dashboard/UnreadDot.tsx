@@ -1,3 +1,5 @@
+import styles from "./UnreadDot.module.css";
+
 interface Props {
   show: boolean;
 }
@@ -5,17 +7,5 @@ interface Props {
 export function UnreadDot({ show }: Props) {
   if (!show) return null;
 
-  return (
-    <span
-      style={{
-        position: "absolute",
-        top: -2,
-        right: -8,
-        background: "#e03131",
-        borderRadius: "50%",
-        width: 8,
-        height: 8,
-      }}
-    />
-  );
+  return <span className={styles.dot} />;
 }

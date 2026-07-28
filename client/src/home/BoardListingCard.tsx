@@ -1,39 +1,34 @@
 import { Link } from "react-router-dom";
 import type { HomeBoard } from "@cursive/shared";
+import { StickyNote, type StickyNoteColor } from "../ui/StickyNote.js";
+import { ShapeThumbnail } from "../ui/ShapeThumbnail.js";
+import styles from "./BoardListingCard.module.css";
 
-export function BoardListingCard({ board }: { board: HomeBoard }) {
+const NOTE_COLORS: StickyNoteColor[] = ["yellow", "pink", "mint", "blue"];
+
+interface Props {
+  board: HomeBoard;
+  /** Position in the list being rendered — cycling colors by position (rather than hashing each board's id independently) guarantees neighbors never repeat a color, however many boards there are. */
+  index: number;
+}
+
+export function BoardListingCard({ board, index }: Props) {
   return (
-    <Link
-      to={`/watch/${board.shareToken}`}
-      style={{
-        display: "block",
-        border: "1px solid #e0e0e0",
-        borderRadius: 8,
-        padding: 16,
-        textDecoration: "none",
-        color: "#1e1e1e",
-      }}
-    >
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-        <strong>{board.name}</strong>
-        {board.liveViewerCount > 0 && (
-          <span
-            style={{
-              fontSize: 11,
-              color: "#fff",
-              background: "#e03131",
-              borderRadius: 4,
-              padding: "2px 6px",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {board.liveViewerCount} watching
-          </span>
-        )}
-      </div>
-      <p style={{ margin: "4px 0 0", fontSize: 13, color: "#868e96" }}>
-        by {board.ownerName} · {board.totalViews} {board.totalViews === 1 ? "view" : "views"}
-      </p>
-    </Link>
+    <StickyNote color={NOTE_COLORS[index % NOTE_COLORS.length]} square>
+      <Link to={`/watch/${board.shareToken}`} className={styles.card}>
+        <div className={styles.thumbnail}>
+          <ShapeThumbnail shapes={board.thumbnailShapes} />
+        </div>
+        <div className={styles.body}>
+          <div className={styles.titleRow}>
+            <p className={styles.title}>{board.name}</p>
+            {board.liveViewerCount > 0 && <span className={styles.liveBadge}>{board.liveViewerCount} watching</span>}
+          </div>
+          <p className={styles.meta}>
+            by {board.ownerName} · {board.totalViews} {board.totalViews === 1 ? "view" : "views"}
+          </p>
+        </div>
+      </Link>
+    </StickyNote>
   );
 }

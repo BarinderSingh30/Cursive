@@ -16,6 +16,7 @@ function board(id: string) {
     liveViewerCount: 0,
     totalViews: 0,
     createdAt: new Date().toISOString(),
+    thumbnailShapes: [],
   };
 }
 

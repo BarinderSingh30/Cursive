@@ -11,9 +11,11 @@ import { colorForUser } from "./presenceColors.js";
 import { useCall } from "../call/useCall.js";
 import { JoinCallButton } from "../call/JoinCallButton.js";
 import { CallStrip } from "../call/CallStrip.js";
+import { CallStatusCard } from "../call/CallStatusCard.js";
 import { useBoardChatSocket } from "../boardChat/useBoardChatSocket.js";
 import { BoardChatPanel } from "../boardChat/BoardChatPanel.js";
 import type { ShareRequestContext } from "../viewer/shareContext.js";
+import styles from "./BoardExperience.module.css";
 
 interface Props {
   boardId: string;
@@ -25,6 +27,8 @@ interface Props {
   shareContext?: ShareRequestContext;
   /** When provided, the Join Call button renders here (e.g. the owner page's top nav bar) instead of in the row above the canvas. */
   joinCallSlot?: HTMLElement | null;
+  /** The public /watch page's canvas renders dimmed with a "read-only view" pill — a regular invited viewer on /board/:id does not. */
+  readOnlyBadge?: boolean;
   onMembershipChanged?: () => void;
   onBoardDeleted?: () => void;
 }
@@ -42,6 +46,7 @@ export function BoardExperience({
   userName,
   shareContext,
   joinCallSlot,
+  readOnlyBadge = false,
   onMembershipChanged,
   onBoardDeleted,
 }: Props) {
@@ -56,7 +61,7 @@ export function BoardExperience({
     preferredColor,
     role,
   );
-  const { tool } = useActiveTool();
+  const { tool, penColor } = useActiveTool();
   const canPublish = roleAtLeast(role, "collaborator");
   const { isJoined, participants, join, leave, toggleCamera, toggleMic } = useCall(boardId, canPublish, shareContext);
   const [callError, setCallError] = useState<string | null>(null);
@@ -123,19 +128,35 @@ export function BoardExperience({
         onJoin={handleJoinCall}
         onLeave={handleLeaveCall}
       />
-      {callError && <span style={{ fontSize: 12, color: "#e03131" }}>{callError}</span>}
+      {callError && <span style={{ fontSize: 12, color: "var(--alert)" }}>{callError}</span>}
     </>
   ) : null;
 
   return (
-    <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
+    <div className={styles.body}>
       {joinCallSlot && joinCallControls ? createPortal(joinCallControls, joinCallSlot) : null}
-      <div style={{ display: "flex", flexDirection: "column", flex: 1, minWidth: 0 }}>
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, alignItems: "center", padding: 8 }}>
+      <div className={styles.canvasCol}>
+        <div className={styles.presenceRow}>
           {!joinCallSlot && joinCallControls}
           <PresenceList self={localPresence} peers={peers} viewerPeers={viewerPeers} />
         </div>
-        {isJoined && (
+        <div className={`${styles.canvasArea} ${readOnlyBadge ? styles.dimmed : ""}`}>
+          <CanvasStage
+            shapes={shapes}
+            peers={peers}
+            activeTool={tool}
+            strokeColor={penColor}
+            readOnly={isViewer}
+            onAddShape={addShape}
+            onUpdateShape={updateShape}
+            onRemoveShape={removeShape}
+            onCursorMove={updateCursor}
+          />
+          {readOnlyBadge && <span className={styles.readOnlyPill}>read-only view</span>}
+        </div>
+      </div>
+      <div className={styles.rail}>
+        {isJoined ? (
           <CallStrip
             participants={participants}
             canPublish={canPublish}
@@ -145,26 +166,16 @@ export function BoardExperience({
             onToggleCamera={toggleCamera}
             onLeave={handleLeaveCall}
           />
+        ) : (
+          <CallStatusCard peers={peers} />
         )}
-        <div style={{ flex: 1, minHeight: 0, minWidth: 0 }}>
-          <CanvasStage
-            shapes={shapes}
-            peers={peers}
-            activeTool={tool}
-            readOnly={isViewer}
-            onAddShape={addShape}
-            onUpdateShape={updateShape}
-            onRemoveShape={removeShape}
-            onCursorMove={updateCursor}
-          />
-        </div>
+        <BoardChatPanel
+          messages={chatMessages}
+          canPost={userId !== null}
+          onSend={sendChatMessage}
+          onReachTop={loadMoreChat}
+        />
       </div>
-      <BoardChatPanel
-        messages={chatMessages}
-        canPost={userId !== null}
-        onSend={sendChatMessage}
-        onReachTop={loadMoreChat}
-      />
     </div>
   );
 }

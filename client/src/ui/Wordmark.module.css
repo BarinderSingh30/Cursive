@@ -1,0 +1,16 @@
+.lockup {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+}
+
+.word {
+  font-family: var(--font-wordmark);
+  line-height: 1;
+  color: var(--ink);
+}
+
+.wordOnDark {
+  color: var(--paper);
+}

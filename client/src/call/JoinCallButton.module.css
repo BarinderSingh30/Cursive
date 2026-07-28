@@ -1,0 +1,49 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: var(--radius-md);
+  padding: 5px 12px;
+  font-family: var(--font-hand);
+  font-size: 15px;
+  cursor: pointer;
+  transition: background-color 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: var(--radius-round);
+  display: inline-block;
+}
+
+.inCall {
+  border: 1.5px solid var(--go);
+  background: var(--note-mint);
+  color: var(--go);
+}
+
+.inCall:hover {
+  border-color: var(--alert);
+  background: #fff0ee;
+  color: var(--alert);
+}
+
+.join {
+  border: 1.5px solid var(--paper-border);
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.joinActive {
+  border-color: #4dabf7;
+}
+
+.join:hover {
+  background: var(--paper-sunk);
+}
+
+.count {
+  font-weight: 700;
+  color: var(--go);
+}

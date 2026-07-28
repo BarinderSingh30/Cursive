@@ -1,11 +1,15 @@
-import { useRef, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
+import { Modal } from "../ui/Modal.js";
+import { Input } from "../ui/Input.js";
+import { Button } from "../ui/Button.js";
+import styles from "./CreateBoardDialog.module.css";
 
 interface Props {
   onCreate: (name: string) => Promise<unknown>;
 }
 
 export function CreateBoardDialog({ onCreate }: Props) {
-  const dialogRef = useRef<HTMLDialogElement>(null);
+  const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
 
   const handleSubmit = async (e: FormEvent) => {
@@ -13,26 +17,23 @@ export function CreateBoardDialog({ onCreate }: Props) {
     if (!name.trim()) return;
     await onCreate(name.trim());
     setName("");
-    dialogRef.current?.close();
+    setOpen(false);
   };
 
   return (
     <>
-      <button type="button" onClick={() => dialogRef.current?.showModal()}>
-        + New board
-      </button>
-      <dialog ref={dialogRef} style={{ borderRadius: 8, border: "1px solid #e0e0e0", padding: 20 }}>
-        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 8, minWidth: 240 }}>
-          <h3 style={{ margin: 0 }}>New board</h3>
-          <input autoFocus placeholder="Board name" value={name} onChange={(e) => setName(e.target.value)} required />
-          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-            <button type="button" onClick={() => dialogRef.current?.close()}>
+      <Button onClick={() => setOpen(true)}>+ New board</Button>
+      <Modal open={open} onClose={() => setOpen(false)} title="New board">
+        <form onSubmit={handleSubmit} className={styles.form}>
+          <Input autoFocus placeholder="Board name" value={name} onChange={(e) => setName(e.target.value)} required />
+          <div className={styles.actions}>
+            <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
               Cancel
-            </button>
-            <button type="submit">Create</button>
+            </Button>
+            <Button type="submit">Create</Button>
           </div>
         </form>
-      </dialog>
+      </Modal>
     </>
   );
 }

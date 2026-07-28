@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useFriends } from "../friends/useFriends.js";
 import { api } from "../api/client.js";
 import { useChatSocket } from "./useChatSocket.js";
@@ -9,6 +9,7 @@ import { MessageList } from "./MessageList.js";
 import { MessageInput } from "./MessageInput.js";
 import { CreateGroupDialog } from "./CreateGroupDialog.js";
 import { ConversationMenu } from "./ConversationMenu.js";
+import styles from "./ChatPage.module.css";
 
 export function ChatPage() {
   const {
@@ -28,6 +29,7 @@ export function ChatPage() {
   const { friends } = useFriends();
   const [activeId, setActiveId] = useState<string | null>(null);
   const loadedConversationsRef = useRef<Set<string>>(new Set());
+  const [searchParams, setSearchParams] = useSearchParams();
 
   useEffect(() => {
     if (!activeId) return;
@@ -44,32 +46,41 @@ export function ChatPage() {
     setActiveId(id);
   };
 
+  // Lets other screens (e.g. the Friends page's "Message" action) deep-link
+  // straight into a DM via /messages?dm=<friendEmail>, reusing the same
+  // conversation-creation flow startDm() already provides for FriendSearch.
+  useEffect(() => {
+    const dmEmail = searchParams.get("dm");
+    if (!dmEmail) return;
+    setSearchParams((params) => {
+      params.delete("dm");
+      return params;
+    });
+    startDm(dmEmail);
+  }, [searchParams]);
+
+  const activeConversation = conversations.find((c) => c.id === activeId);
+
   return (
-    <div style={{ display: "flex", height: "100vh" }}>
-      <div style={{ width: 260, borderRight: "1px solid #e0e0e0", display: "flex", flexDirection: "column" }}>
-        <div style={{ padding: 12, borderBottom: "1px solid #e0e0e0", display: "flex", justifyContent: "space-between" }}>
-          <h2 style={{ margin: 0, fontSize: 16 }}>Messages</h2>
-          <Link to="/dashboard">← Boards</Link>
+    <div className={styles.page}>
+      <div className={styles.sidebar}>
+        <div className={styles.sidebarHeader}>
+          <h2 className={styles.sidebarHeading}>Messages</h2>
+          <Link to="/dashboard" className={styles.backLink}>
+            ← Boards
+          </Link>
         </div>
-        <div style={{ padding: 12, borderBottom: "1px solid #e0e0e0", display: "flex", flexDirection: "column", gap: 8 }}>
+        <div className={styles.sidebarActions}>
           <FriendSearch friends={friends} onSelect={startDm} />
           <CreateGroupDialog onCreated={setActiveId} />
         </div>
         <ChatRoomList conversations={conversations} activeId={activeId} onSelect={setActiveId} />
       </div>
-      <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+      <div className={styles.thread}>
         {activeId ? (
           <>
-            <div
-              style={{
-                padding: 12,
-                borderBottom: "1px solid #e0e0e0",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <strong>{conversations.find((c) => c.id === activeId)?.displayName}</strong>
+            <div className={styles.threadHeader}>
+              <h3 className={styles.threadHeading}>{activeConversation?.displayName}</h3>
               <ConversationMenu onClearHistory={() => clearHistory(activeId)} />
             </div>
             <MessageList
@@ -83,13 +94,11 @@ export function ChatPage() {
             <MessageInput
               onSend={(content) => sendMessage(activeId, content)}
               onTyping={() => notifyTyping(activeId)}
-              disabled={conversations.find((c) => c.id === activeId)?.canSend === false}
+              disabled={activeConversation?.canSend === false}
             />
           </>
         ) : (
-          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "#868e96" }}>
-            Select a conversation to start chatting
-          </div>
+          <div className={styles.emptyThread}>Select a conversation to start chatting</div>
         )}
       </div>
     </div>

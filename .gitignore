@@ -38,3 +38,9 @@ LEARNING.md
 
 # Manual-testing artifact containing a real session token — never commit
 cookies.txt
+
+# Phase 7 design handoff material (reference only, not part of the app)
+/design_handoff_cursive_pale_cork/
+/docs/superpowers/specs/2026-07-28-phase7-design-brief-for-claude-design.md
+/docs/superpowers/specs/phase7-claude-design-package.zip
+/docs/superpowers/specs/phase7-claude-design-package/

@@ -9,11 +9,17 @@ import { BoardCard } from "./BoardCard.js";
 import { CreateBoardDialog } from "./CreateBoardDialog.js";
 import { NotificationsButton } from "./NotificationsButton.js";
 import { UnreadDot } from "./UnreadDot.js";
+import { PaperBar, PaperBarNavLink } from "../ui/PaperBar.js";
+import { Wordmark } from "../ui/Wordmark.js";
+import { Button } from "../ui/Button.js";
+import { Avatar } from "../ui/Avatar.js";
+import { SegmentedToggle } from "../ui/SegmentedToggle.js";
+import styles from "./DashboardPage.module.css";
 
 const TABS: { role: BoardRole; label: string; emptyMessage: string }[] = [
-  { role: "owner", label: "My boards", emptyMessage: "No boards yet — create your first one below." },
-  { role: "collaborator", label: "Collaborating on", emptyMessage: "No boards where you're a collaborator yet." },
-  { role: "viewer", label: "Viewing", emptyMessage: "No boards where you're a viewer yet." },
+  { role: "owner", label: "Mine", emptyMessage: "nothing pinned yet — start your first board" },
+  { role: "collaborator", label: "Collaborating", emptyMessage: "No boards where you're a collaborator yet." },
+  { role: "viewer", label: "Watching", emptyMessage: "No boards where you're a viewer yet." },
 ];
 
 export function DashboardPage() {
@@ -26,67 +32,69 @@ export function DashboardPage() {
   const activeBoards = boards.filter((b) => b.role === activeTab);
   const activeTabInfo = TABS.find((t) => t.role === activeTab)!;
 
+  const tabOptions = TABS.map((tab) => {
+    const count = boards.filter((b) => b.role === tab.role).length;
+    return { value: tab.role, label: count > 0 ? `${tab.label} (${count})` : tab.label };
+  });
+
   return (
-    <div style={{ maxWidth: 720, margin: "40px auto", padding: "0 16px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
-        <h1 style={{ margin: 0 }}>Your boards</h1>
-        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-          <span style={{ fontSize: 14, color: "#868e96" }}>{session?.user.name || session?.user.email}</span>
-          <Link to="/">Home</Link>
-          <NotificationsButton onAccepted={refreshBoards} />
-          <Link to="/friends" style={{ position: "relative" }}>
-            Friends
-            <UnreadDot show={requests.length > 0} />
-          </Link>
-          <Link to="/messages" style={{ position: "relative" }}>
-            Messages
-            <UnreadDot show={hasUnreadMessages} />
-          </Link>
-          <button type="button" onClick={() => signOut().then(() => (window.location.href = "/login"))}>
-            Log out
-          </button>
+    <div className={styles.page}>
+      <PaperBar
+        left={<Wordmark size={28} />}
+        right={
+          <div className={styles.navGroup}>
+            <PaperBarNavLink to="/dashboard">Boards</PaperBarNavLink>
+            <div className={styles.navLinkWrap}>
+              <PaperBarNavLink to="/friends">
+                Friends
+                <UnreadDot show={requests.length > 0} />
+              </PaperBarNavLink>
+            </div>
+            <div className={styles.navLinkWrap}>
+              <PaperBarNavLink to="/messages">
+                Messages
+                <UnreadDot show={hasUnreadMessages} />
+              </PaperBarNavLink>
+            </div>
+            <NotificationsButton onAccepted={refreshBoards} />
+            <Avatar name={session?.user.name || session?.user.email || "?"} color="#1971c2" size={30} />
+            <span className={styles.userName}>{session?.user.name || session?.user.email}</span>
+            <Link to="/" className={styles.navLinkWrap}>
+              <Button variant="ghost">Home</Button>
+            </Link>
+            <Button variant="ghost" onClick={() => signOut().then(() => (window.location.href = "/login"))}>
+              Log out
+            </Button>
+          </div>
+        }
+      />
+
+      <div className={styles.heroRow}>
+        <h1 className={styles.heading}>Your boards</h1>
+        <div className={styles.filterChip}>
+          <SegmentedToggle options={tabOptions} value={activeTab} onChange={setActiveTab} />
         </div>
       </div>
 
-      <div style={{ display: "flex", gap: 4, borderBottom: "1px solid #e0e0e0", marginBottom: 16 }}>
-        {TABS.map((tab) => {
-          const count = boards.filter((b) => b.role === tab.role).length;
-          const isActive = tab.role === activeTab;
-          return (
-            <button
-              key={tab.role}
-              type="button"
-              onClick={() => setActiveTab(tab.role)}
-              style={{
-                padding: "8px 14px",
-                border: "none",
-                borderBottom: isActive ? "2px solid #1971c2" : "2px solid transparent",
-                background: "transparent",
-                color: isActive ? "#1971c2" : "#495057",
-                fontWeight: isActive ? 600 : 400,
-                cursor: "pointer",
-              }}
-            >
-              {tab.label} {count > 0 && `(${count})`}
-            </button>
-          );
-        })}
-      </div>
-
       {activeTab === "owner" && (
-        <div style={{ marginBottom: 16 }}>
+        <div className={styles.createRow}>
           <CreateBoardDialog onCreate={createBoard} />
         </div>
       )}
 
       {loading ? (
-        <p>Loading…</p>
+        <div className={styles.statusCard}>Loading…</div>
+      ) : activeBoards.length === 0 && activeTab !== "owner" ? (
+        <div className={styles.statusCard}>{activeTabInfo.emptyMessage}</div>
       ) : activeBoards.length === 0 ? (
-        <p>{activeTabInfo.emptyMessage}</p>
+        <div className={styles.emptySlot}>
+          <p className={styles.emptySlotText}>{activeTabInfo.emptyMessage}</p>
+          <CreateBoardDialog onCreate={createBoard} />
+        </div>
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 12 }}>
-          {activeBoards.map((board) => (
-            <BoardCard key={board.id} board={board} onDelete={deleteBoard} />
+        <div className={styles.grid}>
+          {activeBoards.map((board, index) => (
+            <BoardCard key={board.id} board={board} index={index} onDelete={deleteBoard} />
           ))}
         </div>
       )}

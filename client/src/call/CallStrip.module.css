@@ -1,0 +1,59 @@
+.card {
+  width: 300px;
+  flex-shrink: 0;
+  background: var(--note-mint);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3);
+  box-shadow: var(--shadow-note-cork);
+}
+
+.header {
+  font-family: var(--font-hand);
+  font-size: 15px;
+  color: var(--ink);
+  margin-bottom: var(--space-2);
+}
+
+.tiles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.controls {
+  display: flex;
+  gap: 6px;
+  margin-top: var(--space-3);
+  justify-content: center;
+}
+
+.statusCard {
+  width: 300px;
+  flex-shrink: 0;
+  background: var(--note-mint);
+  border-radius: var(--radius-lg);
+  padding: 10px var(--space-3);
+  box-shadow: var(--shadow-note-cork);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.statusText {
+  font-family: var(--font-hand);
+  font-size: 15px;
+  color: var(--ink);
+}
+
+.statusAvatars {
+  display: flex;
+}
+
+.statusAvatars > * {
+  margin-left: -6px;
+}
+
+.statusAvatars > *:first-child {
+  margin-left: 0;
+}

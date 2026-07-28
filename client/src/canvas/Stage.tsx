@@ -6,7 +6,6 @@ import { ShapeRenderer } from "./shapes/index.js";
 import { RemoteCursors } from "./cursors/RemoteCursors.js";
 import type { PresenceState } from "./yjs/useAwareness.js";
 
-const DEFAULT_STROKE = "#1e1e1e";
 const DEFAULT_STROKE_WIDTH = 2;
 const MIN_DRAG_DISTANCE = 3;
 
@@ -14,6 +13,8 @@ interface Props {
   shapes: Shape[];
   peers: Map<number, PresenceState>;
   activeTool: Tool;
+  /** Stroke color used for newly-drawn shapes — the Toolbar's pen colour swatches. */
+  strokeColor: string;
   readOnly?: boolean;
   onAddShape: (shape: Shape) => void;
   onUpdateShape: (id: string, changes: Partial<Shape>) => void;
@@ -66,6 +67,7 @@ export function CanvasStage({
   shapes,
   peers,
   activeTool,
+  strokeColor,
   readOnly = false,
   onAddShape,
   onUpdateShape,
@@ -106,7 +108,7 @@ export function CanvasStage({
           width: 0,
           height: 0,
           rotation: 0,
-          strokeColor: DEFAULT_STROKE,
+          strokeColor,
           strokeWidth: DEFAULT_STROKE_WIDTH,
           fillColor: null,
         };
@@ -119,7 +121,7 @@ export function CanvasStage({
           radiusX: 0,
           radiusY: 0,
           rotation: 0,
-          strokeColor: DEFAULT_STROKE,
+          strokeColor,
           strokeWidth: DEFAULT_STROKE_WIDTH,
           fillColor: null,
         };
@@ -131,7 +133,7 @@ export function CanvasStage({
           y: 0,
           points: [x, y, x, y],
           rotation: 0,
-          strokeColor: DEFAULT_STROKE,
+          strokeColor,
           strokeWidth: DEFAULT_STROKE_WIDTH,
         };
       case "freehand":
@@ -142,7 +144,7 @@ export function CanvasStage({
           y: 0,
           points: [x, y],
           rotation: 0,
-          strokeColor: DEFAULT_STROKE,
+          strokeColor,
           strokeWidth: DEFAULT_STROKE_WIDTH,
         };
       default:
@@ -172,11 +174,11 @@ export function CanvasStage({
           x: pointer.x,
           y: pointer.y,
           rotation: 0,
-          strokeColor: DEFAULT_STROKE,
+          strokeColor,
           strokeWidth: 0,
           text,
           fontSize: 20,
-          fillColor: DEFAULT_STROKE,
+          fillColor: strokeColor,
         });
       }
       return;
@@ -223,7 +225,7 @@ export function CanvasStage({
   };
 
   return (
-    <div ref={containerRef} style={{ width: "100%", height: "100%" }}>
+    <div ref={containerRef} className="canvas-dot-grid" style={{ width: "100%", height: "100%" }}>
       <KonvaStage
         width={size.width}
         height={size.height}

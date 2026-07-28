@@ -13,12 +13,13 @@ function makeBoard(overrides: Partial<HomeBoard> = {}): HomeBoard {
     liveViewerCount: 0,
     totalViews: 5,
     createdAt: new Date().toISOString(),
+    thumbnailShapes: [],
     ...overrides,
   };
 }
 
-function renderCard(board: HomeBoard) {
-  return render(<BoardListingCard board={board} />, { wrapper: MemoryRouter });
+function renderCard(board: HomeBoard, index = 0) {
+  return render(<BoardListingCard board={board} index={index} />, { wrapper: MemoryRouter });
 }
 
 describe("BoardListingCard", () => {

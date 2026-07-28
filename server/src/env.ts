@@ -11,10 +11,6 @@ const envSchema = z.object({
   LIVEKIT_URL: z.string(),
   LIVEKIT_API_KEY: z.string(),
   LIVEKIT_API_SECRET: z.string(),
-  GOOGLE_CLIENT_ID: z.string().optional(),
-  GOOGLE_CLIENT_SECRET: z.string().optional(),
-  GITHUB_CLIENT_ID: z.string().optional(),
-  GITHUB_CLIENT_SECRET: z.string().optional(),
 });
 
 export const env = envSchema.parse(process.env);

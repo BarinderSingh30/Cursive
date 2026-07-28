@@ -1,9 +1,12 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import type { BoardRole } from "@cursive/shared";
 import { useFriends } from "../friends/useFriends.js";
 import { useBoardMembers } from "./useBoardMembers.js";
 import { usePendingBoardInvites } from "./usePendingBoardInvites.js";
 import { api } from "../api/client.js";
+import { Button } from "../ui/Button.js";
+import { Modal } from "../ui/Modal.js";
+import styles from "./InviteMemberDialog.module.css";
 
 interface Props {
   boardId: string;
@@ -12,7 +15,7 @@ interface Props {
 }
 
 export function InviteMemberDialog({ boardId, membershipVersion }: Props) {
-  const dialogRef = useRef<HTMLDialogElement>(null);
+  const [open, setOpen] = useState(false);
   const { friends } = useFriends();
   const { members, loading: membersLoading, refresh: refreshMembers, removeMember } = useBoardMembers(boardId);
   const { invites: pendingInvites, loading: invitesLoading, refresh: refreshInvites } = usePendingBoardInvites(boardId);
@@ -51,26 +54,26 @@ export function InviteMemberDialog({ boardId, membershipVersion }: Props) {
 
   return (
     <>
-      <button type="button" onClick={() => dialogRef.current?.showModal()}>
+      <Button variant="primary" onClick={() => setOpen(true)}>
         Members
-      </button>
-      <dialog ref={dialogRef} style={{ borderRadius: 8, border: "1px solid #e0e0e0", padding: 20 }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 16, minWidth: 280 }}>
+      </Button>
+      <Modal open={open} onClose={() => setOpen(false)} title="Board members">
+        <div className={styles.content}>
           <div>
-            <h3 style={{ margin: "0 0 8px" }}>Current members</h3>
+            <h3 className={styles.sectionHeading}>Current members</h3>
             {membersLoading ? (
-              <p style={{ margin: 0, color: "#868e96" }}>Loading…</p>
+              <p className={styles.muted}>Loading…</p>
             ) : (
-              <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 6 }}>
+              <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
                 {manageableMembers.map((m) => (
-                  <li key={m.userId} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <li key={m.userId} className={styles.memberRow}>
                     <span>
-                      {m.name ?? m.email} <span style={{ fontSize: 12, color: "#868e96" }}>({m.role})</span>
+                      {m.name ?? m.email} <span className={styles.roleTag}>({m.role})</span>
                     </span>
                     {m.role !== "owner" && (
-                      <button type="button" onClick={() => removeMember(m.userId)}>
+                      <Button variant="ghost" onClick={() => removeMember(m.userId)}>
                         Remove
-                      </button>
+                      </Button>
                     )}
                   </li>
                 ))}
@@ -80,33 +83,26 @@ export function InviteMemberDialog({ boardId, membershipVersion }: Props) {
 
           {!invitesLoading && manageablePendingInvites.length > 0 && (
             <div>
-              <h3 style={{ margin: "0 0 8px" }}>Waiting on a response</h3>
-              <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 6 }}>
+              <h3 className={styles.sectionHeading}>Waiting on a response</h3>
+              <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
                 {manageablePendingInvites.map((i) => (
-                  <li key={i.id} style={{ color: "#868e96" }}>
-                    {i.inviteeName ?? i.inviteeEmail} <span style={{ fontSize: 12 }}>({i.role}, invited)</span>
+                  <li key={i.id} className={styles.pendingRow}>
+                    {i.inviteeName ?? i.inviteeEmail} <span className={styles.roleTag}>({i.role}, invited)</span>
                   </li>
                 ))}
               </ul>
             </div>
           )}
 
-          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <h3 style={{ margin: 0 }}>Invite a friend</h3>
+          <form onSubmit={handleSubmit} className={styles.form}>
+            <h3 className={styles.sectionHeading}>Invite a friend</h3>
             {friends.length === 0 ? (
-              <p style={{ margin: 0, color: "#868e96" }}>
-                You don't have any friends yet — add one from the Friends page first.
-              </p>
+              <p className={styles.muted}>You don't have any friends yet — add one from the Friends page first.</p>
             ) : (
               <>
-                <label>
+                <label className={styles.fieldLabel}>
                   Friend
-                  <select
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    style={{ display: "block", width: "100%" }}
-                  >
+                  <select value={email} onChange={(e) => setEmail(e.target.value)} required className={styles.select}>
                     <option value="" disabled>
                       Choose a friend…
                     </option>
@@ -117,7 +113,7 @@ export function InviteMemberDialog({ boardId, membershipVersion }: Props) {
                     ))}
                   </select>
                 </label>
-                <fieldset style={{ border: "none", padding: 0, margin: 0, display: "flex", gap: 12 }}>
+                <fieldset className={styles.radioGroup}>
                   <label>
                     <input type="radio" name="role" checked={role === "collaborator"} onChange={() => setRole("collaborator")} />
                     Collaborator (can draw)
@@ -129,16 +125,16 @@ export function InviteMemberDialog({ boardId, membershipVersion }: Props) {
                 </fieldset>
               </>
             )}
-            {error && <p style={{ color: "#e03131", margin: 0 }}>{error}</p>}
-            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button type="button" onClick={() => dialogRef.current?.close()}>
+            {error && <p className={styles.error}>{error}</p>}
+            <div className={styles.actions}>
+              <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
                 Close
-              </button>
-              {friends.length > 0 && <button type="submit">Invite</button>}
+              </Button>
+              {friends.length > 0 && <Button type="submit">Invite</Button>}
             </div>
           </form>
         </div>
-      </dialog>
+      </Modal>
     </>
   );
 }

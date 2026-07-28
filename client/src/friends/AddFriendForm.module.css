@@ -1,0 +1,31 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.input {
+  background: var(--paper);
+  border: 1.5px solid #c9e2d3;
+  border-radius: var(--radius-sm);
+  padding: 11px 14px;
+  font-family: var(--font-body);
+  font-size: 14.5px;
+  color: var(--ink);
+}
+
+.input::placeholder {
+  color: var(--ink-faint);
+}
+
+.input:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(61, 122, 90, 0.15);
+}
+
+.error {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--alert);
+  margin: 0;
+}

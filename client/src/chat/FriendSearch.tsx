@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { FriendSummary } from "@cursive/shared";
+import styles from "./FriendSearch.module.css";
 
 interface Props {
   friends: FriendSummary[];
@@ -23,31 +24,21 @@ export function FriendSearch({ friends, onSelect }: Props) {
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+    <div className={styles.wrap}>
       <input
         type="text"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder="Search friends…"
+        className={styles.input}
       />
       {normalizedQuery && (
-        <div style={{ display: "flex", flexDirection: "column", maxHeight: 160, overflowY: "auto" }}>
+        <div className={styles.results}>
           {matches.length === 0 ? (
-            <p style={{ color: "#868e96", fontSize: 12, margin: "4px 0" }}>No friends found</p>
+            <p className={styles.empty}>No friends found</p>
           ) : (
             matches.map((f) => (
-              <button
-                key={f.id}
-                type="button"
-                onClick={() => handleSelect(f.email)}
-                style={{
-                  textAlign: "left",
-                  padding: "6px 8px",
-                  border: "none",
-                  background: "transparent",
-                  cursor: "pointer",
-                }}
-              >
+              <button key={f.id} type="button" onClick={() => handleSelect(f.email)} className={styles.resultButton}>
                 {f.name ?? f.email}
               </button>
             ))

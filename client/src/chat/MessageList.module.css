@@ -1,0 +1,74 @@
+.list {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.messageRow {
+  max-width: 360px;
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.self {
+  align-self: flex-end;
+  flex-direction: row-reverse;
+}
+
+.other {
+  align-self: flex-start;
+  flex-direction: row;
+}
+
+.senderName {
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--ink-soft);
+  margin-bottom: 2px;
+}
+
+.bubble {
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  line-height: 1.45;
+  padding: 8px 12px;
+  box-shadow: var(--shadow-chat-bubble);
+}
+
+.bubbleSelf {
+  background: var(--note-yellow);
+  color: var(--ink);
+  border-radius: 12px 12px 3px 12px;
+}
+
+.bubbleOther {
+  background: var(--paper);
+  color: var(--ink);
+  border-radius: 12px 12px 12px 3px;
+}
+
+.deleteButton {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--ink-faint);
+  font-size: 12px;
+  line-height: 1;
+  padding: 4px 6px;
+  font-family: var(--font-body);
+}
+
+.deleteButton:hover {
+  color: var(--alert);
+}
+
+.typing {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--ink-soft);
+  font-style: italic;
+}

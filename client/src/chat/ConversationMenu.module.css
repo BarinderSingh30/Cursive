@@ -1,0 +1,47 @@
+.wrap {
+  position: relative;
+}
+
+.trigger {
+  border: none;
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  padding: 0 4px;
+}
+
+.trigger:hover {
+  color: var(--ink);
+}
+
+.menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: var(--paper);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-modal);
+  z-index: 5;
+  min-width: 170px;
+  padding: 4px;
+}
+
+.menuItem {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  color: var(--alert);
+  cursor: pointer;
+}
+
+.menuItem:hover {
+  background: var(--paper-sunk);
+}

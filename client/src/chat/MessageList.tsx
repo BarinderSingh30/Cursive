@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { ChatMessage } from "@cursive/shared";
 import { useSession } from "../auth/authClient.js";
+import styles from "./MessageList.module.css";
 
 export interface TypingUser {
   userId: string;
@@ -79,39 +80,19 @@ export function MessageList({
   };
 
   return (
-    <div
-      ref={containerRef}
-      onScroll={handleScroll}
-      style={{ flex: 1, overflowY: "auto", padding: 12, display: "flex", flexDirection: "column", gap: 8 }}
-    >
+    <div ref={containerRef} onScroll={handleScroll} className={styles.list}>
       {messages.map((m) => {
         const isSelf = m.senderId === session?.user.id;
         return (
           <div
             key={m.id}
             data-message-id={m.id}
-            style={{
-              alignSelf: isSelf ? "flex-end" : "flex-start",
-              maxWidth: "70%",
-              display: "flex",
-              alignItems: "flex-end",
-              gap: 4,
-              flexDirection: isSelf ? "row-reverse" : "row",
-              cursor: onDeleteMessage ? "pointer" : undefined,
-            }}
+            className={`${styles.messageRow} ${isSelf ? styles.self : styles.other}`}
+            style={{ cursor: onDeleteMessage ? "pointer" : undefined }}
           >
             <div>
-              {!isSelf && <div style={{ fontSize: 11, color: "#868e96" }}>{m.senderName ?? "Unknown"}</div>}
-              <div
-                style={{
-                  background: isSelf ? "#1971c2" : "#f1f3f5",
-                  color: isSelf ? "#fff" : "#1e1e1e",
-                  borderRadius: 12,
-                  padding: "8px 12px",
-                }}
-              >
-                {m.content}
-              </div>
+              {!isSelf && <div className={styles.senderName}>{m.senderName ?? "Unknown"}</div>}
+              <div className={`${styles.bubble} ${isSelf ? styles.bubbleSelf : styles.bubbleOther}`}>{m.content}</div>
             </div>
             {onDeleteMessage && openMessageId === m.id && (
               <button
@@ -119,15 +100,7 @@ export function MessageList({
                 onClick={() => onDeleteMessage(m.id)}
                 aria-label="Delete message"
                 title="Delete message"
-                style={{
-                  border: "none",
-                  background: "transparent",
-                  cursor: "pointer",
-                  color: "#adb5bd",
-                  fontSize: 12,
-                  lineHeight: 1,
-                  padding: "4px 6px",
-                }}
+                className={styles.deleteButton}
               >
                 Delete
               </button>
@@ -135,9 +108,7 @@ export function MessageList({
           </div>
         );
       })}
-      {typingUsers.length > 0 && (
-        <div style={{ fontSize: 12, color: "#868e96", fontStyle: "italic" }}>{formatTypingText(typingUsers)}</div>
-      )}
+      {typingUsers.length > 0 && <div className={styles.typing}>{formatTypingText(typingUsers)}</div>}
       <div ref={bottomRef} />
     </div>
   );

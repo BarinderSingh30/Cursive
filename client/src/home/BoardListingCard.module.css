@@ -1,0 +1,57 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  text-decoration: none;
+  color: inherit;
+  padding: 0 0 12px;
+  transition: transform var(--transition-hover), box-shadow var(--transition-hover);
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 20px -8px rgba(0, 0, 0, 0.4);
+}
+
+.thumbnail {
+  background: var(--paper);
+  height: 92px;
+  margin: 10px 10px 0;
+}
+
+.body {
+  padding: 10px 12px 0;
+}
+
+.titleRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.title {
+  font-family: var(--font-hand);
+  font-size: 19px;
+  color: var(--ink);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.liveBadge {
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: #fff;
+  background: var(--alert);
+  border-radius: 4px;
+  padding: 2px 6px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.meta {
+  font-family: var(--font-body);
+  font-size: 12px;
+  margin: 4px 0 0;
+}

@@ -1,24 +1,11 @@
 import type { PresenceState } from "../yjs/useAwareness.js";
+import { Avatar } from "../../ui/Avatar.js";
+import styles from "./PresenceList.module.css";
 
 interface Props {
   self: PresenceState;
   peers: Map<number, PresenceState>;
   viewerPeers: Map<number, PresenceState>;
-}
-
-function Dot({ color }: { color: string }) {
-  return (
-    <span
-      style={{
-        width: 10,
-        height: 10,
-        borderRadius: "50%",
-        background: color,
-        display: "inline-block",
-        flexShrink: 0,
-      }}
-    />
-  );
 }
 
 function PeerGroup({
@@ -36,23 +23,21 @@ function PeerGroup({
 
   return (
     <div>
-      <div style={{ fontSize: 11, fontWeight: 600, color: "#868e96", marginBottom: 4 }}>
+      <div className={styles.groupTitle}>
         {title} ({(includeSelf ? 1 : 0) + peers.size})
       </div>
-      <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 6 }}>
-        {includeSelf && (
-          <li style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <Dot color={self.color} />
-            {self.name} (you)
-          </li>
-        )}
-        {Array.from(peers.entries()).map(([clientId, peer]) => (
-          <li key={clientId} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <Dot color={peer.color} />
-            {peer.name}
-          </li>
-        ))}
-      </ul>
+      {includeSelf && (
+        <div className={styles.memberRow}>
+          <Avatar name={self.name} color={self.color} size={22} />
+          {self.name} (you)
+        </div>
+      )}
+      {Array.from(peers.entries()).map(([clientId, peer]) => (
+        <div key={clientId} className={styles.memberRow}>
+          <Avatar name={peer.name} color={peer.color} size={22} />
+          {peer.name}
+        </div>
+      ))}
     </div>
   );
 }
@@ -62,39 +47,21 @@ export function PresenceList({ self, peers, viewerPeers }: Props) {
   const collaboratorCount = (isViewerSelf ? 0 : 1) + peers.size;
   const viewerCount = (isViewerSelf ? 1 : 0) + viewerPeers.size;
 
+  const avatarPeers = isViewerSelf ? Array.from(peers.values()) : [self, ...Array.from(peers.values())];
+
   return (
-    <details style={{ position: "relative" }}>
-      <summary
-        style={{
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          gap: 6,
-          padding: "4px 8px",
-          border: "1px solid #e0e0e0",
-          borderRadius: 6,
-        }}
-      >
-        <Dot color={self.color} />
-        {collaboratorCount} online
-        {viewerCount > 0 && <span style={{ color: "#868e96" }}>· {viewerCount} watching</span>}
+    <details className={styles.wrap}>
+      <summary className={styles.chip}>
+        <span className={styles.dot} />
+        {collaboratorCount} drawing
+        {viewerCount > 0 && <span className={styles.viewerCount}>· {viewerCount} watching</span>}
+        <span className={styles.avatarStack}>
+          {avatarPeers.slice(0, 4).map((p, i) => (
+            <Avatar key={i} name={p.name} color={p.color} size={22} />
+          ))}
+        </span>
       </summary>
-      <div
-        style={{
-          position: "absolute",
-          right: 0,
-          top: "calc(100% + 4px)",
-          minWidth: 160,
-          background: "#fff",
-          border: "1px solid #e0e0e0",
-          borderRadius: 8,
-          padding: 8,
-          display: "flex",
-          flexDirection: "column",
-          gap: 10,
-          zIndex: 10,
-        }}
-      >
+      <div className={styles.panel}>
         <PeerGroup title="Collaborators" self={self} includeSelf={!isViewerSelf} peers={peers} />
         <PeerGroup title="Viewers" self={self} includeSelf={isViewerSelf} peers={viewerPeers} />
       </div>

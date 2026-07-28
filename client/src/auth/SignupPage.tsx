@@ -1,7 +1,13 @@
 import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { signUp } from "./authClient.js";
-import { OAuthButtons } from "./OAuthButtons.js";
+import { AuthLayout } from "./AuthLayout.js";
+import { Input } from "../ui/Input.js";
+import { Button } from "../ui/Button.js";
+import { Avatar } from "../ui/Avatar.js";
+import styles from "./AuthLayout.module.css";
+
+const SAMPLE_AVATAR_COLORS = ["#2f9e44", "#1971c2", "#f08c00"];
 
 export function SignupPage() {
   const [name, setName] = useState("");
@@ -22,26 +28,51 @@ export function SignupPage() {
   };
 
   return (
-    <div style={{ maxWidth: 340, margin: "80px auto", display: "flex", flexDirection: "column", gap: 16 }}>
-      <h1>Sign up</h1>
-      <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        <input type="text" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} required />
-        <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-        <input
+    <AuthLayout
+      asidePosition="left"
+      asideColor="mint"
+      asideRotate={-1.6}
+      aside={
+        <>
+          <h2 className={styles.asideHeading}>Three clicks to your first board</h2>
+          <p className={styles.asideBody}>Free while you're figuring it out. Invite friends by email whenever you're ready.</p>
+          <div className={styles.avatarStack}>
+            {SAMPLE_AVATAR_COLORS.map((color, i) => (
+              <Avatar key={color} name={`Person ${i + 1}`} color={color} size={30} surfaceColor="var(--note-mint)" />
+            ))}
+          </div>
+          <p className={styles.asideCount}>2,148 boards this week</p>
+        </>
+      }
+    >
+      <h1 className={styles.heading}>Make an account</h1>
+      <form onSubmit={handleSubmit} className={styles.form}>
+        <Input label="Name" type="text" placeholder="Your name" value={name} onChange={(e) => setName(e.target.value)} required />
+        <Input
+          label="Email"
+          type="email"
+          placeholder="you@example.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+        />
+        <Input
+          label="Password"
           type="password"
-          placeholder="Password (min 8 characters)"
+          placeholder="At least 8 characters"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           minLength={8}
           required
         />
-        {error && <p style={{ color: "#e03131", margin: 0 }}>{error}</p>}
-        <button type="submit">Sign up</button>
+        {error && <p className={styles.formError}>{error}</p>}
+        <Button type="submit" fullWidth>
+          Create account
+        </Button>
       </form>
-      <OAuthButtons />
-      <p>
-        Already have an account? <Link to="/login">Log in</Link>
+      <p className={styles.footer}>
+        Already pinned up here? <Link to="/login">Log in</Link>
       </p>
-    </div>
+    </AuthLayout>
   );
 }

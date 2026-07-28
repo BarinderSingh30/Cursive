@@ -1,0 +1,61 @@
+.body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  gap: var(--space-canvas-gap);
+  padding: var(--space-canvas-gap);
+  background-color: var(--cork);
+  background-image:
+    radial-gradient(circle at 25% 35%, var(--cork-speck-light) 0 2px, transparent 3px),
+    radial-gradient(circle at 70% 65%, var(--cork-speck-dark) 0 2px, transparent 3px);
+  background-size: 19px 19px, 27px 27px;
+}
+
+.canvasCol {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  gap: var(--space-2);
+}
+
+.presenceRow {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.rail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  flex-shrink: 0;
+}
+
+.canvasArea {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-paper-panel);
+}
+
+.dimmed > :first-child {
+  opacity: 0.75;
+}
+
+.readOnlyPill {
+  position: absolute;
+  left: var(--space-3);
+  bottom: var(--space-3);
+  background: var(--paper);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-pill);
+  padding: 6px 14px;
+  font-family: var(--font-hand);
+  font-size: 14px;
+  color: var(--ink-soft);
+}

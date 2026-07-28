@@ -1,14 +1,17 @@
-import { useRef, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { useFriends } from "../friends/useFriends.js";
 import { api } from "../api/client.js";
 import { FriendSearch } from "./FriendSearch.js";
+import { Modal } from "../ui/Modal.js";
+import { Button } from "../ui/Button.js";
+import styles from "./CreateGroupDialog.module.css";
 
 interface Props {
   onCreated: (conversationId: string) => void;
 }
 
 export function CreateGroupDialog({ onCreated }: Props) {
-  const dialogRef = useRef<HTMLDialogElement>(null);
+  const [open, setOpen] = useState(false);
   const { friends } = useFriends();
   const [name, setName] = useState("");
   const [selectedEmails, setSelectedEmails] = useState<string[]>([]);
@@ -26,7 +29,7 @@ export function CreateGroupDialog({ onCreated }: Props) {
     const { id } = await api.post<{ id: string }>("/api/chat/conversations/group", { name, memberEmails: selectedEmails });
     setName("");
     setSelectedEmails([]);
-    dialogRef.current?.close();
+    setOpen(false);
     onCreated(id);
   };
 
@@ -35,44 +38,38 @@ export function CreateGroupDialog({ onCreated }: Props) {
 
   return (
     <>
-      <button type="button" onClick={() => dialogRef.current?.showModal()}>
+      <Button variant="secondary" onClick={() => setOpen(true)}>
         + New group
-      </button>
-      <dialog ref={dialogRef} style={{ borderRadius: 8, border: "1px solid #e0e0e0", padding: 20 }}>
-        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 8, minWidth: 260 }}>
-          <h3 style={{ margin: 0 }}>New group chat</h3>
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Group name" required />
+      </Button>
+      <Modal open={open} onClose={() => setOpen(false)} title="New group chat">
+        <form onSubmit={handleSubmit} className={styles.form}>
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Group name"
+            className={styles.input}
+            required
+          />
           {selectedFriends.length > 0 && (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            <div className={styles.chips}>
               {selectedFriends.map((f) => (
-                <button
-                  key={f.id}
-                  type="button"
-                  onClick={() => removeFriend(f.email)}
-                  style={{
-                    border: "none",
-                    borderRadius: 12,
-                    padding: "2px 8px",
-                    background: "#e7f5ff",
-                    cursor: "pointer",
-                  }}
-                >
+                <button key={f.id} type="button" onClick={() => removeFriend(f.email)} className={styles.chip}>
                   {f.name ?? f.email} ✕
                 </button>
               ))}
             </div>
           )}
           <FriendSearch friends={searchableFriends} onSelect={addFriend} />
-          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-            <button type="button" onClick={() => dialogRef.current?.close()}>
+          <div className={styles.actions}>
+            <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
               Cancel
-            </button>
-            <button type="submit" disabled={selectedEmails.length === 0}>
+            </Button>
+            <Button type="submit" disabled={selectedEmails.length === 0}>
               Create
-            </button>
+            </Button>
           </div>
         </form>
-      </dialog>
+      </Modal>
     </>
   );
 }

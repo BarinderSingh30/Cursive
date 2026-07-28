@@ -1,0 +1,42 @@
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.info {
+  flex: 1;
+  min-width: 0;
+}
+
+.name {
+  font-family: var(--font-hand);
+  font-size: 17px;
+  margin: 0;
+}
+
+.email {
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  margin: 2px 0 0;
+  opacity: 0.85;
+}
+
+.actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+.empty {
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  opacity: 0.85;
+  margin: 0;
+}

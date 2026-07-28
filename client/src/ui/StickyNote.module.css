@@ -1,0 +1,44 @@
+.note {
+  position: relative;
+  border-radius: var(--radius-note);
+  box-shadow: var(--shadow-note-cork);
+}
+
+.square {
+  border-radius: 0;
+}
+
+.onCanvas {
+  box-shadow: var(--shadow-note-canvas);
+}
+
+.yellow {
+  background: var(--note-yellow);
+  color: var(--note-yellow-text);
+}
+
+.pink {
+  background: var(--note-pink);
+  color: var(--note-pink-text);
+}
+
+.mint {
+  background: var(--note-mint);
+  color: var(--note-mint-text);
+}
+
+.blue {
+  background: var(--note-blue);
+  color: var(--note-blue-text);
+}
+
+.tape {
+  position: absolute;
+  left: 50%;
+  top: -9px;
+  margin-left: -26px;
+  width: 52px;
+  height: 18px;
+  background: rgba(255, 255, 255, 0.55);
+  pointer-events: none;
+}

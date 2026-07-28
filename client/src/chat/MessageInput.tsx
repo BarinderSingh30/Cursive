@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import styles from "./MessageInput.module.css";
 
 interface Props {
   onSend: (content: string) => void;
@@ -24,7 +25,7 @@ export function MessageInput({ onSend, onTyping, disabled = false }: Props) {
 
   if (disabled) {
     return (
-      <div style={{ padding: 12, borderTop: "1px solid #e0e0e0", color: "#868e96", fontSize: 14 }}>
+      <div className={styles.disabledNote}>
         You&rsquo;re no longer friends with this person — you can still see your message history, but can&rsquo;t
         send new messages.
       </div>
@@ -32,15 +33,17 @@ export function MessageInput({ onSend, onTyping, disabled = false }: Props) {
   }
 
   return (
-    <form onSubmit={handleSubmit} style={{ display: "flex", gap: 8, padding: 12, borderTop: "1px solid #e0e0e0" }}>
+    <form onSubmit={handleSubmit} className={styles.composer}>
       <input
         type="text"
         value={value}
         onChange={(e) => handleChange(e.target.value)}
         placeholder="Type a message…"
-        style={{ flex: 1 }}
+        className={styles.input}
       />
-      <button type="submit">Send</button>
+      <button type="submit" className={styles.sendButton}>
+        Send
+      </button>
     </form>
   );
 }

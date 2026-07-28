@@ -19,6 +19,7 @@ import { mintConnectionTicket } from "../authorization/connectionTicket.js";
 import { mintCallToken } from "../call/callToken.js";
 import { env } from "../env.js";
 import { notifyBoardMembershipChanged, notifyBoardDeleted } from "../collab/hocuspocus.js";
+import { decodeThumbnailShapes } from "../collab/boardThumbnail.js";
 import { getSessionFromRequest } from "../auth/session.js";
 import { listBoardMessages } from "../boardChat/messages.js";
 
@@ -68,7 +69,13 @@ boardsRouter.post("/", requireAuth, async (req, res) => {
     },
   });
 
-  const body: BoardSummary = { id: board.id, name: board.name, role: "owner", createdAt: board.createdAt.toISOString() };
+  const body: BoardSummary = {
+    id: board.id,
+    name: board.name,
+    role: "owner",
+    createdAt: board.createdAt.toISOString(),
+    thumbnailShapes: [],
+  };
   res.status(201).json(body);
 });
 
@@ -85,6 +92,7 @@ boardsRouter.get("/", requireAuth, async (req, res) => {
     name: m.board.name,
     role: m.role,
     createdAt: m.board.createdAt.toISOString(),
+    thumbnailShapes: decodeThumbnailShapes(m.board.content),
   }));
   res.json(body);
 });
@@ -96,6 +104,7 @@ boardsRouter.get("/:boardId", requireBoardRole("viewer"), async (req, res) => {
     name: board.name,
     role: res.locals.boardRole,
     createdAt: board.createdAt.toISOString(),
+    thumbnailShapes: decodeThumbnailShapes(board.content),
   };
   res.json(body);
 });
@@ -294,6 +303,7 @@ boardsRouter.delete("/:boardId/members/:userId", requireBoardRole("owner"), asyn
 boardsRouter.get("/by-share/:shareToken", async (req, res) => {
   const board = await prisma.board.findFirst({
     where: { shareToken: req.params.shareToken, shareEnabled: true },
+    include: { owner: true },
   });
   if (!board) {
     res.status(404).json({ error: "This link isn't active" });
@@ -306,6 +316,11 @@ boardsRouter.get("/by-share/:shareToken", async (req, res) => {
     ? await prisma.boardMember.findUnique({ where: { boardId_userId: { boardId: board.id, userId } } })
     : null;
 
-  const body: ShareLinkInfo = { boardId: board.id, boardName: board.name, hasMembership: membership !== null };
+  const body: ShareLinkInfo = {
+    boardId: board.id,
+    boardName: board.name,
+    ownerName: board.owner.name ?? "Anonymous",
+    hasMembership: membership !== null,
+  };
   res.json(body);
 });

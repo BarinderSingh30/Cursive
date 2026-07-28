@@ -1,5 +1,7 @@
-import { toolSchema } from "@cursive/shared";
-import { useActiveTool } from "./useActiveTool.js";
+import { useEffect } from "react";
+import { toolSchema, type Tool } from "@cursive/shared";
+import { useActiveTool, PEN_COLORS } from "./useActiveTool.js";
+import styles from "./Toolbar.module.css";
 
 const TOOL_LABELS: Record<string, string> = {
   select: "Select",
@@ -10,28 +12,62 @@ const TOOL_LABELS: Record<string, string> = {
   text: "Text",
 };
 
+const TOOL_SHORTCUTS: Record<string, Tool> = {
+  v: "select",
+  r: "rectangle",
+  o: "ellipse",
+  l: "line",
+  p: "freehand",
+  t: "text",
+};
+
 export function Toolbar() {
-  const { tool, setTool } = useActiveTool();
+  const { tool, setTool, penColor, setPenColor } = useActiveTool();
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
+      if (e.key === "Escape") {
+        setTool("select");
+        return;
+      }
+      const next = TOOL_SHORTCUTS[e.key.toLowerCase()];
+      if (next) setTool(next);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [setTool]);
 
   return (
-    <div style={{ display: "flex", gap: 4 }}>
-      {toolSchema.options.map((option) => (
-        <button
-          key={option}
-          type="button"
-          onClick={() => setTool(option)}
-          style={{
-            padding: "6px 12px",
-            border: "1px solid #d0d0d0",
-            borderRadius: 6,
-            background: tool === option ? "#1971c2" : "#fff",
-            color: tool === option ? "#fff" : "#1e1e1e",
-            cursor: "pointer",
-          }}
-        >
-          {TOOL_LABELS[option]}
-        </button>
-      ))}
+    <div className={styles.row}>
+      <div className={styles.pill}>
+        {toolSchema.options.map((option) => (
+          <button
+            key={option}
+            type="button"
+            onClick={() => setTool(option)}
+            className={`${styles.tool} ${tool === option ? styles.toolActive : ""}`}
+          >
+            {TOOL_LABELS[option]}
+          </button>
+        ))}
+      </div>
+      <div className={styles.colorGroup}>
+        <span className={styles.colorLabel}>pen colour</span>
+        <div className={styles.swatches}>
+          {PEN_COLORS.map((color) => (
+            <button
+              key={color}
+              type="button"
+              aria-label={`Pen colour ${color}`}
+              onClick={() => setPenColor(color)}
+              className={`${styles.swatch} ${penColor === color ? styles.swatchActive : ""}`}
+              style={{ background: color, color }}
+            />
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

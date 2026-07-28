@@ -1,4 +1,14 @@
 import type { ConversationSummary } from "@cursive/shared";
+import { Avatar } from "../ui/Avatar.js";
+import styles from "./ChatRoomList.module.css";
+
+const AVATAR_COLORS = ["#1971c2", "#2f9e44", "#f08c00", "#9c36b5", "#0c8599", "#e8590c"];
+
+function avatarColorFor(id: string): string {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
+  return AVATAR_COLORS[hash % AVATAR_COLORS.length]!;
+}
 
 interface Props {
   conversations: ConversationSummary[];
@@ -8,51 +18,24 @@ interface Props {
 
 export function ChatRoomList({ conversations, activeId, onSelect }: Props) {
   if (conversations.length === 0) {
-    return <p style={{ color: "#868e96", padding: 12 }}>No conversations yet — message a friend to start one.</p>;
+    return <p className={styles.empty}>No conversations yet — message a friend to start one.</p>;
   }
 
   return (
-    <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
+    <ul className={styles.list}>
       {conversations.map((c) => (
         <li key={c.id}>
           <button
             type="button"
             onClick={() => onSelect(c.id)}
-            style={{
-              width: "100%",
-              textAlign: "left",
-              padding: 10,
-              border: "none",
-              borderBottom: "1px solid #f1f3f5",
-              background: c.id === activeId ? "#e7f5ff" : "transparent",
-              cursor: "pointer",
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
+            className={`${styles.row} ${c.id === activeId ? styles.rowActive : ""}`}
           >
-            <span>
-              <strong>{c.displayName}</strong>
-              <br />
-              <span style={{ fontSize: 12, color: "#868e96" }}>{c.lastMessage ?? "No messages yet"}</span>
+            <Avatar name={c.displayName} color={avatarColorFor(c.id)} size={38} />
+            <span className={styles.rowInfo}>
+              <p className={styles.rowName}>{c.displayName}</p>
+              <p className={styles.rowPreview}>{c.lastMessage ?? "No messages yet"}</p>
             </span>
-            {c.unreadCount > 0 && (
-              <span
-                style={{
-                  background: "#e03131",
-                  color: "#fff",
-                  borderRadius: "50%",
-                  width: 20,
-                  height: 20,
-                  fontSize: 11,
-                  textAlign: "center",
-                  lineHeight: "20px",
-                  flexShrink: 0,
-                }}
-              >
-                {c.unreadCount}
-              </span>
-            )}
+            {c.unreadCount > 0 && <span className={styles.unreadBadge}>{c.unreadCount}</span>}
           </button>
         </li>
       ))}

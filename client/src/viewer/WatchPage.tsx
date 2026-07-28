@@ -5,71 +5,50 @@ import { BoardExperience } from "../canvas/BoardExperience.js";
 import { useSession } from "../auth/authClient.js";
 import { useShareLink } from "./useShareLink.js";
 import { useAnonIdentity } from "./useAnonIdentity.js";
+import { Wordmark } from "../ui/Wordmark.js";
+import { Logo } from "../ui/Logo.js";
+import { Button } from "../ui/Button.js";
+import styles from "./WatchPage.module.css";
 
 const REDIRECT_DELAY_MS = 2500;
 
 function BoardDeletedRedirect() {
   return (
-    <div
-      style={{
-        height: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 16,
-        textAlign: "center",
-      }}
-    >
-      <p style={{ fontSize: 18, margin: 0 }}>The owner ended this board. Taking you back to Home…</p>
-      <Link to="/">
-        <button type="button">Go to Home now</button>
-      </Link>
+    <div className={styles.centered}>
+      <p className={styles.centeredText}>The owner ended this board. Taking you back to Home…</p>
+      <a href="/" className={styles.centeredLink}>
+        Go to Home now
+      </a>
     </div>
   );
 }
 
 function LinkNotActive() {
   return (
-    <div
-      style={{
-        height: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 16,
-      }}
-    >
-      <p style={{ fontSize: 18, margin: 0 }}>This link isn't active.</p>
-      <a href="/login">Log in</a>
+    <div className={styles.centered}>
+      <p className={styles.centeredText}>This link isn't active.</p>
+      <a href="/login" className={styles.centeredLink}>
+        Log in
+      </a>
     </div>
   );
 }
 
 function AnonNamePrompt({ onSubmit }: { onSubmit: (name: string) => void }) {
   return (
-    <div
-      style={{
-        height: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 12,
-      }}
-    >
-      <p style={{ margin: 0 }}>What should we call you in chat?</p>
+    <div className={styles.namePrompt}>
+      <Wordmark size={32} onDark />
+      <p className={styles.namePromptText}>What should we call you in chat?</p>
       <form
         onSubmit={(e) => {
           e.preventDefault();
           const input = (e.currentTarget.elements.namedItem("name") as HTMLInputElement).value.trim();
           if (input) onSubmit(input);
         }}
-        style={{ display: "flex", gap: 8 }}
+        className={styles.namePromptForm}
       >
-        <input name="name" placeholder="Guest name" required />
-        <button type="submit">Continue</button>
+        <input name="name" placeholder="Guest name" required className={styles.namePromptInput} />
+        <Button type="submit">Continue</Button>
       </form>
     </div>
   );
@@ -90,7 +69,7 @@ export function WatchPage() {
   }, [boardDeleted, navigate]);
 
   if (boardDeleted) return <BoardDeletedRedirect />;
-  if (isPending || loading) return <p style={{ padding: 24 }}>Loading…</p>;
+  if (isPending || loading) return <div className={styles.centered}>Loading…</div>;
   if (notFound) return <LinkNotActive />;
   if (!info) return null;
   // Already a real member (owner/collaborator/invited viewer) — the share
@@ -107,18 +86,19 @@ export function WatchPage() {
 
   return (
     <ActiveToolProvider>
-      <div style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            padding: 8,
-            borderBottom: "1px solid #e0e0e0",
-          }}
-        >
-          <strong>{info.boardName}</strong>
-          <span style={{ fontSize: 12, color: "#868e96" }}>👀 Watching via public link</span>
+      <div className={styles.page}>
+        <div className={styles.bar}>
+          <div className={styles.titleGroup}>
+            <Link to="/" aria-label="Cursive — go to Home">
+              <Logo size={28} />
+            </Link>
+            <span className={styles.title}>{info.boardName}</span>
+            <span className={styles.owner}>by {info.ownerName}</span>
+          </div>
+          <div className={styles.actionGroup}>
+            <span className={styles.watchingPill}>👁 watching via public link</span>
+            <Button onClick={() => navigate("/login")}>Log in</Button>
+          </div>
         </div>
         <BoardExperience
           boardId={info.boardId}
@@ -126,6 +106,7 @@ export function WatchPage() {
           userId={userId}
           userName={userName ?? "Guest"}
           shareContext={{ shareToken: shareToken!, anonId, anonName: anonName ?? undefined }}
+          readOnlyBadge
           onBoardDeleted={() => setBoardDeleted(true)}
         />
       </div>

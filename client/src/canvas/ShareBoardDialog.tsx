@@ -1,8 +1,11 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useBoardShare } from "./useBoardShare.js";
+import { Button } from "../ui/Button.js";
+import { Modal } from "../ui/Modal.js";
+import styles from "./ShareBoardDialog.module.css";
 
 export function ShareBoardDialog({ boardId }: { boardId: string }) {
-  const dialogRef = useRef<HTMLDialogElement>(null);
+  const [open, setOpen] = useState(false);
   const { enabled, token, listed, loading, enable, disable, regenerate, makePublic, makePrivate } =
     useBoardShare(boardId);
   const url = token ? `${window.location.origin}/watch/${token}` : null;
@@ -17,68 +20,55 @@ export function ShareBoardDialog({ boardId }: { boardId: string }) {
 
   return (
     <>
-      <button type="button" onClick={() => dialogRef.current?.showModal()}>
+      <Button variant="secondary" onClick={() => setOpen(true)}>
         Share
-      </button>
-      <dialog ref={dialogRef} style={{ borderRadius: 8, border: "1px solid #e0e0e0", padding: 20 }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 16, minWidth: 320 }}>
-          <h3 style={{ margin: 0 }}>Public watch link</h3>
+      </Button>
+      <Modal open={open} onClose={() => setOpen(false)} title="Public watch link">
+        <div className={styles.content}>
           {!loading && (
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                fontSize: 13,
-                color: "#495057",
-              }}
-            >
+            <div className={styles.visibilityRow}>
               <span>{listed ? "Listed on the public Home page" : "Private — hidden from Home page"}</span>
-              <button type="button" onClick={listed ? makePrivate : makePublic}>
+              <Button variant="ghost" onClick={listed ? makePrivate : makePublic}>
                 {listed ? "Make private" : "Make public"}
-              </button>
+              </Button>
             </div>
           )}
           {loading ? (
-            <p style={{ margin: 0, color: "#868e96" }}>Loading…</p>
+            <p className={styles.muted}>Loading…</p>
           ) : enabled && url ? (
             <>
-              <p style={{ margin: 0, fontSize: 13, color: "#868e96" }}>
+              <p className={styles.muted}>
                 Anyone with this link can watch this board's canvas and call, and read chat. Logged-in visitors can
                 also chat.
               </p>
-              <div style={{ display: "flex", gap: 8 }}>
-                <input readOnly value={url} onFocus={(e) => e.target.select()} style={{ flex: 1 }} />
-                <button type="button" onClick={handleCopy}>
-                  {copied ? "Copied!" : "Copy"}
-                </button>
+              <div className={styles.linkRow}>
+                <input readOnly value={url} onFocus={(e) => e.target.select()} className={styles.linkInput} />
+                <Button onClick={handleCopy}>{copied ? "Copied!" : "Copy"}</Button>
               </div>
-              <div style={{ display: "flex", gap: 8 }}>
-                <button type="button" onClick={regenerate}>
+              <div className={styles.actionRow}>
+                <Button variant="secondary" onClick={regenerate}>
                   Regenerate link
-                </button>
-                <button type="button" onClick={disable}>
+                </Button>
+                <Button variant="ghost" onClick={disable}>
                   Turn off
-                </button>
+                </Button>
               </div>
             </>
           ) : (
             <>
-              <p style={{ margin: 0, fontSize: 13, color: "#868e96" }}>
+              <p className={styles.muted}>
                 Turn this on to get a public link anyone can use to watch this board, no account required.
               </p>
-              <button type="button" onClick={enable}>
-                Enable public link
-              </button>
+              <Button onClick={enable}>Enable public link</Button>
             </>
           )}
-          <div style={{ display: "flex", justifyContent: "flex-end" }}>
-            <button type="button" onClick={() => dialogRef.current?.close()}>
+          <div className={styles.footerRow}>
+            <Button variant="secondary" onClick={() => setOpen(false)}>
               Close
-            </button>
+            </Button>
           </div>
         </div>
-      </dialog>
+      </Modal>
     </>
   );
 }
