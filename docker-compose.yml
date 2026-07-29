@@ -1,3 +1,5 @@
+name: real-time-collaborative-whiteboard
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -153,3 +155,7 @@ services:
 
 volumes:
   postgres_data:
+    # Pinned to the volume this project's containers have used since Phase 2
+    # (before the project got an explicit `name:` above) so renaming the
+    # compose project doesn't orphan the accumulated dev data.
+    name: real-timecollaborativewhiteboard_postgres_data
