@@ -59,7 +59,9 @@ export class RedisPubSub implements PubSub {
       existing.add(handler);
     } else {
       this.handlers.set(channel, new Set([handler]));
-      void this.subscriber.subscribe(channel);
+      this.subscriber.subscribe(channel).catch((error) => {
+        console.error(`Failed to subscribe to Redis channel ${channel}:`, error);
+      });
     }
     return () => {
       const handlers = this.handlers.get(channel);
@@ -67,13 +69,22 @@ export class RedisPubSub implements PubSub {
       handlers.delete(handler);
       if (handlers.size === 0) {
         this.handlers.delete(channel);
-        void this.subscriber.unsubscribe(channel);
+        this.subscriber.unsubscribe(channel).catch((error) => {
+          console.error(`Failed to unsubscribe from Redis channel ${channel}:`, error);
+        });
       }
     };
   }
 
   publish(channel: string, payload: unknown): void {
-    void redis.publish(channel, JSON.stringify(payload));
+    redis.publish(channel, JSON.stringify(payload)).catch((error) => {
+      console.error(`Failed to publish to Redis channel ${channel}:`, error);
+    });
+  }
+
+  /** Closes the dedicated subscriber connection. Used by tests to avoid leaking connections. */
+  close(): Promise<void> {
+    return this.subscriber.quit().then(() => undefined);
   }
 }
 

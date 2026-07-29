@@ -1,9 +1,16 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { RedisPubSub } from "./pubsub.js";
 
 describe("RedisPubSub", () => {
+  let pubsub: RedisPubSub | undefined;
+
+  afterEach(async () => {
+    await pubsub?.close();
+    pubsub = undefined;
+  });
+
   it("delivers a published payload to a subscribed handler", async () => {
-    const pubsub = new RedisPubSub();
+    pubsub = new RedisPubSub();
     const handler = vi.fn();
     const unsubscribe = pubsub.subscribe("redis-test-channel-1", handler);
     // Redis SUBSCRIBE is async — give it a moment to register before publishing.
@@ -16,7 +23,7 @@ describe("RedisPubSub", () => {
   });
 
   it("stops delivering after unsubscribe", async () => {
-    const pubsub = new RedisPubSub();
+    pubsub = new RedisPubSub();
     const handler = vi.fn();
     const unsubscribe = pubsub.subscribe("redis-test-channel-2", handler);
     await new Promise((resolve) => setTimeout(resolve, 50));
@@ -29,7 +36,7 @@ describe("RedisPubSub", () => {
   });
 
   it("does not deliver to a different channel", async () => {
-    const pubsub = new RedisPubSub();
+    pubsub = new RedisPubSub();
     const handler = vi.fn();
     pubsub.subscribe("redis-test-channel-3", handler);
     await new Promise((resolve) => setTimeout(resolve, 50));
