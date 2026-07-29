@@ -7,6 +7,7 @@ export const toolSchema = z.enum([
   "line",
   "freehand",
   "text",
+  "eraser",
 ]);
 
 export type Tool = z.infer<typeof toolSchema>;
