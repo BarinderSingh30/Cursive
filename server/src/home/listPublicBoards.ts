@@ -8,9 +8,9 @@ const PAGE_SIZE = 24;
 /**
  * Ranks every public board (listed + share-enabled) by live viewer count,
  * then total views, then recency. Fetches all candidate boards and sorts in
- * application code rather than in SQL, since live viewer count only exists
- * in Hocuspocus's in-memory state, not the database — fine at this project's
- * scale, and cross-instance correctness is explicitly Phase 8's job.
+ * application code rather than in SQL, since live viewer count comes from
+ * Redis (via `getLiveViewerCount`), not the database — correct across every
+ * server instance, but not something Postgres can sort by directly.
  */
 export async function listPublicBoards(limit: number = PAGE_SIZE, ownerIds?: string[]): Promise<HomeBoardsPage> {
   const boards = await prisma.board.findMany({
@@ -33,7 +33,10 @@ export async function listPublicBoards(limit: number = PAGE_SIZE, ownerIds?: str
       // non-null assertion (rather than `as string`) documents that the
       // guarantee comes from the query, not a blind cast.
       shareToken: board.shareToken!,
-      liveViewerCount: await getLiveViewerCount(board.id),
+      liveViewerCount: await getLiveViewerCount(board.id).catch((error) => {
+        console.error(`Failed to get live viewer count for board ${board.id}:`, error);
+        return 0;
+      }),
       totalViews: board.totalViews,
       createdAt: board.createdAt,
       content: board.content,
