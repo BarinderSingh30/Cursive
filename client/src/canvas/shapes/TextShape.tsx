@@ -9,12 +9,14 @@ interface Props extends ShapeInteractionProps {
 export function TextShape({ shape, draggable, isSelected, onDragEnd, onClick }: Props) {
   return (
     <Text
+      id={shape.id}
       x={shape.x}
       y={shape.y}
       text={shape.text}
       fontSize={shape.fontSize}
       rotation={shape.rotation}
       fill={shape.fillColor}
+      opacity={shape.opacity}
       draggable={draggable}
       onClick={onClick}
       onTap={onClick}

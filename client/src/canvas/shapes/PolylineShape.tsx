@@ -9,12 +9,15 @@ interface Props extends ShapeInteractionProps {
 export function PolylineShape({ shape, draggable, isSelected, onDragEnd, onClick }: Props) {
   return (
     <Line
+      id={shape.id}
       x={shape.x}
       y={shape.y}
       points={shape.points}
       rotation={shape.rotation}
       stroke={shape.strokeColor}
       strokeWidth={shape.strokeWidth}
+      opacity={shape.opacity}
+      globalCompositeOperation={shape.type === "freehand" && shape.blendMode === "multiply" ? "multiply" : "source-over"}
       lineCap="round"
       lineJoin="round"
       tension={shape.type === "freehand" ? 0.4 : 0}

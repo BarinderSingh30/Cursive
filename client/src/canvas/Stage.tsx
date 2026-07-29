@@ -110,6 +110,7 @@ export function CanvasStage({
           rotation: 0,
           strokeColor,
           strokeWidth: DEFAULT_STROKE_WIDTH,
+          opacity: 1,
           fillColor: null,
         };
       case "ellipse":
@@ -123,6 +124,7 @@ export function CanvasStage({
           rotation: 0,
           strokeColor,
           strokeWidth: DEFAULT_STROKE_WIDTH,
+          opacity: 1,
           fillColor: null,
         };
       case "line":
@@ -135,6 +137,7 @@ export function CanvasStage({
           rotation: 0,
           strokeColor,
           strokeWidth: DEFAULT_STROKE_WIDTH,
+          opacity: 1,
         };
       case "freehand":
         return {
@@ -146,6 +149,8 @@ export function CanvasStage({
           rotation: 0,
           strokeColor,
           strokeWidth: DEFAULT_STROKE_WIDTH,
+          opacity: 1,
+          blendMode: "normal",
         };
       default:
         return null;
@@ -176,6 +181,7 @@ export function CanvasStage({
           rotation: 0,
           strokeColor,
           strokeWidth: 0,
+          opacity: 1,
           text,
           fontSize: 20,
           fillColor: strokeColor,
