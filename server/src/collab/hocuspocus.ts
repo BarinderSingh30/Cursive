@@ -8,6 +8,7 @@ import { verifyConnectionTicket } from "../authorization/connectionTicket.js";
 import { recordBoardView } from "./viewCounting.js";
 import { markViewerActive, markViewerGone, countActiveViewers, startHeartbeat, stopHeartbeat } from "./viewerPresence.js";
 import { redis } from "../redis/client.js";
+import { BoardSignalRelay } from "./boardSignal.js";
 
 /**
  * Shape of the object `onAuthenticate` returns, available as `context` in
@@ -87,14 +88,24 @@ export const hocuspocus = Server.configure({
 });
 
 /**
- * Lets a REST route (adding/removing a board member) push an instant signal
- * to anyone currently connected to that board, over the same WebSocket
- * connection they already have open — no separate notification channel
- * needed. If nobody's connected to this board right now, this is a no-op
- * (Hocuspocus only keeps a Document in memory while someone's using it).
+ * Lets a REST route (adding/removing a board member, or deleting the whole
+ * board) push an instant signal to anyone currently connected to that board,
+ * over the same WebSocket connection they already have open — no separate
+ * notification channel needed on the client side.
+ *
+ * The REST route that triggers this can land on any instance behind nginx's
+ * round-robin — not necessarily the instance holding the local Hocuspocus
+ * `Document` for that board. `BoardSignalRelay` publishes to Redis so every
+ * instance (including this one) hears about it and, on receipt, checks its
+ * own `documents` map: a no-op wherever nobody's connected to that board,
+ * and an actual `broadcastStateless` wherever someone is.
  */
+const boardSignalRelay = new BoardSignalRelay((boardId, payload) => {
+  hocuspocus.documents.get(boardId)?.broadcastStateless(payload);
+});
+
 export function notifyBoardMembershipChanged(boardId: string) {
-  hocuspocus.documents.get(boardId)?.broadcastStateless(JSON.stringify({ type: "membership-changed" }));
+  boardSignalRelay.publish(boardId, { type: "membership-changed" });
 }
 
 /**
@@ -103,7 +114,7 @@ export function notifyBoardMembershipChanged(boardId: string) {
  * to leave, rather than silently yanking them back to the dashboard.
  */
 export function notifyBoardDeleted(boardId: string) {
-  hocuspocus.documents.get(boardId)?.broadcastStateless(JSON.stringify({ type: "board-deleted" }));
+  boardSignalRelay.publish(boardId, { type: "board-deleted" });
 }
 
 /**
