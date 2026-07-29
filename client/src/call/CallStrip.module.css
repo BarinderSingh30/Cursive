@@ -1,6 +1,6 @@
 .card {
-  width: 300px;
-  flex-shrink: 0;
+  /* No fixed width: the floating strip's size is driven by client-only
+     drag/resize state in CallStrip.tsx, never synced to anyone else. */
   background: var(--note-mint);
   border-radius: var(--radius-lg);
   padding: var(--space-3);
@@ -8,10 +8,14 @@
 }
 
 .header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   font-family: var(--font-hand);
   font-size: 15px;
   color: var(--ink);
   margin-bottom: var(--space-2);
+  user-select: none;
 }
 
 .tiles {

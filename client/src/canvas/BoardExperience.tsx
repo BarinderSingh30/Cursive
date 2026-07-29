@@ -80,6 +80,23 @@ export function BoardExperience({
   };
   const handleLeaveCall = () => leave();
 
+  const handleToggleMic = async () => {
+    setCallError(null);
+    try {
+      await toggleMic();
+    } catch {
+      setCallError("Couldn't access the microphone. Check your device/permissions and try again.");
+    }
+  };
+  const handleToggleCamera = async () => {
+    setCallError(null);
+    try {
+      await toggleCamera();
+    } catch {
+      setCallError("Couldn't access the camera. Check your device/permissions and try again.");
+    }
+  };
+
   // Viewers (invited or share-link, logged in or anonymous) have no Join
   // Call button — they auto-watch/listen whenever a collaborator/owner is
   // actually in a call, and auto-disconnect the moment none are.
@@ -162,8 +179,8 @@ export function BoardExperience({
             canPublish={canPublish}
             micEnabled={participants.find((p) => p.isLocal)?.micEnabled ?? false}
             cameraEnabled={participants.find((p) => p.isLocal)?.cameraEnabled ?? false}
-            onToggleMic={toggleMic}
-            onToggleCamera={toggleCamera}
+            onToggleMic={handleToggleMic}
+            onToggleCamera={handleToggleCamera}
             onLeave={handleLeaveCall}
           />
         ) : (

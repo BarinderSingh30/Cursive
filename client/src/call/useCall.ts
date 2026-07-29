@@ -139,8 +139,18 @@ export function useCall(boardId: string, canPublish: boolean, shareContext?: Sha
     if (!canPublish) return;
     const local = roomRef.current?.localParticipant;
     if (!local) return;
-    await local.setCameraEnabled(!local.isCameraEnabled);
-    syncParticipants();
+    // setCameraEnabled(true) re-acquires the device via getUserMedia when no
+    // track has been published yet (e.g. the initial join-time permission
+    // prompt was denied or the device was busy) — that can reject. The
+    // try/finally guarantees syncParticipants() still runs so local state
+    // never goes stale, while letting the rejection propagate to the caller
+    // so it can surface real feedback instead of the button silently doing
+    // nothing on every subsequent click.
+    try {
+      await local.setCameraEnabled(!local.isCameraEnabled);
+    } finally {
+      syncParticipants();
+    }
   }, [canPublish, syncParticipants]);
 
   const toggleMic = useCallback(async () => {
@@ -149,8 +159,14 @@ export function useCall(boardId: string, canPublish: boolean, shareContext?: Sha
     if (!canPublish) return;
     const local = roomRef.current?.localParticipant;
     if (!local) return;
-    await local.setMicrophoneEnabled(!local.isMicrophoneEnabled);
-    syncParticipants();
+    // Same reasoning as toggleCamera above: setMicrophoneEnabled(true) can
+    // reject (busy/denied device), so guarantee syncParticipants() still
+    // runs and let the error propagate for the caller to handle.
+    try {
+      await local.setMicrophoneEnabled(!local.isMicrophoneEnabled);
+    } finally {
+      syncParticipants();
+    }
   }, [canPublish, syncParticipants]);
 
   // Covers navigating away from the board mid-call, not just clicking Leave.

@@ -21,9 +21,49 @@ function initialsForName(name: string): string {
   return (first + last).toUpperCase();
 }
 
-const TILE_SIZE = { width: 84, height: 63 };
+// Tiles keep the same 4:3 shape the old hardcoded 84x63 constant had, but
+// the actual width/height is now derived per-render from the container size
+// and participant count (see computeTileSize) instead of being fixed —
+// otherwise resizing the card just added empty space around thumbnails that
+// never grew.
+const TILE_ASPECT_RATIO = 4 / 3;
+// Matches `.tiles`' `gap: var(--space-2)` in CallStrip.module.css — needed
+// here so the packing math accounts for the same spacing the flexbox layout
+// actually renders with.
+const TILE_GAP = 8;
+const TILE_MIN_SIZE = { width: 56, height: 42 };
 
-function ParticipantTile({ participant }: { participant: CallParticipant }) {
+/**
+ * Picks a tile width/height that fills the available `.tiles` container as
+ * much as possible for `count` participants, wrapping into however many
+ * rows/columns make the tiles biggest while still fitting — same idea as a
+ * video-call grid (Zoom/Meet) reflowing tile size to participant count and
+ * available space, rather than a fixed size that just adds scroll room.
+ */
+export function computeTileSize(containerWidth: number, containerHeight: number, count: number): { width: number; height: number } {
+  if (count <= 0) return TILE_MIN_SIZE;
+
+  let best = { width: TILE_MIN_SIZE.width, height: TILE_MIN_SIZE.height };
+  for (let cols = 1; cols <= count; cols++) {
+    const rows = Math.ceil(count / cols);
+    const widthByCols = (containerWidth - TILE_GAP * (cols - 1)) / cols;
+    const heightByRows = (containerHeight - TILE_GAP * (rows - 1)) / rows;
+    if (widthByCols <= 0 || heightByRows <= 0) continue;
+    // The binding dimension (whichever is tighter) sets the tile's width,
+    // with height derived to keep the fixed aspect ratio.
+    const width = Math.min(widthByCols, heightByRows * TILE_ASPECT_RATIO);
+    if (width > best.width) {
+      best = { width, height: width / TILE_ASPECT_RATIO };
+    }
+  }
+
+  return {
+    width: Math.max(TILE_MIN_SIZE.width, Math.round(best.width)),
+    height: Math.max(TILE_MIN_SIZE.height, Math.round(best.height)),
+  };
+}
+
+function ParticipantTile({ participant, size }: { participant: CallParticipant; size: { width: number; height: number } }) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -63,8 +103,8 @@ function ParticipantTile({ participant }: { participant: CallParticipant }) {
   return (
     <div
       style={{
-        width: TILE_SIZE.width,
-        height: TILE_SIZE.height,
+        width: size.width,
+        height: size.height,
         flexShrink: 0,
         background: "#1a1a1a",
         borderRadius: 8,
@@ -218,42 +258,162 @@ interface Props {
   onLeave: () => void;
 }
 
-/** The active-call card, docked at the top of the board's right rail (not a floating/draggable widget). */
+const MIN_SIZE = { width: 180, height: 70 };
+const MAX_SIZE = { width: 640, height: 480 };
+const DEFAULT_SIZE = { width: 280, height: 106 };
+
+/** The active-call card: a floating, draggable, resizable widget layered over the board (position/size are client-side-only state, never synced). */
 export function CallStrip({ participants, canPublish, micEnabled, cameraEnabled, onToggleMic, onToggleCamera, onLeave }: Props) {
   // Viewers can join to watch/listen but never publish — showing their tile
   // would just be a black box with a name and mute icon, so the strip only
   // surfaces collaborators/owners.
   const visible = participants.filter((p) => p.canPublish);
 
+  const [position, setPosition] = useState({ x: 16, y: 64 });
+  // Local-only — each client resizes/repositions their own strip
+  // independently, this never gets broadcast to anyone else.
+  const [size, setSize] = useState(DEFAULT_SIZE);
+  const tileSize = computeTileSize(size.width, size.height, visible.length);
+  const dragOrigin = useRef<{ startX: number; startY: number; originX: number; originY: number } | null>(null);
+  const resizeOrigin = useRef<{ startX: number; startY: number; originWidth: number; originHeight: number } | null>(null);
+  // Drives cursor/shadow feedback during an active drag or resize. Kept
+  // separate from the refs above (which exist purely to avoid re-renders on
+  // every mousemove) — this only changes twice per gesture (start/end).
+  const [interactionMode, setInteractionMode] = useState<"idle" | "dragging" | "resizing">("idle");
+  const [resizeHover, setResizeHover] = useState(false);
+
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      if (dragOrigin.current) {
+        const { startX, startY, originX, originY } = dragOrigin.current;
+        setPosition({ x: originX + (e.clientX - startX), y: originY + (e.clientY - startY) });
+      }
+      if (resizeOrigin.current) {
+        const { startX, startY, originWidth, originHeight } = resizeOrigin.current;
+        setSize({
+          width: Math.min(MAX_SIZE.width, Math.max(MIN_SIZE.width, originWidth + (e.clientX - startX))),
+          height: Math.min(MAX_SIZE.height, Math.max(MIN_SIZE.height, originHeight + (e.clientY - startY))),
+        });
+      }
+    };
+    const onUp = () => {
+      dragOrigin.current = null;
+      resizeOrigin.current = null;
+      setInteractionMode("idle");
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, []);
+
+  // While actively dragging or resizing, pin the cursor and disable text
+  // selection at the document level. Without this, moving the mouse faster
+  // than it stays over the (small) handle makes the cursor flicker back to
+  // the default arrow and can start selecting nearby page text.
+  useEffect(() => {
+    if (interactionMode === "idle") return;
+    const previousCursor = document.body.style.cursor;
+    const previousUserSelect = document.body.style.userSelect;
+    document.body.style.cursor = interactionMode === "resizing" ? "nwse-resize" : "grabbing";
+    document.body.style.userSelect = "none";
+    return () => {
+      document.body.style.cursor = previousCursor;
+      document.body.style.userSelect = previousUserSelect;
+    };
+  }, [interactionMode]);
+
+  const isDragging = interactionMode === "dragging";
+  const isResizing = interactionMode === "resizing";
+
   return (
-    <div className={styles.card}>
-      <div className={styles.header}>📹 Call · {visible.length} on</div>
-      <div className={styles.tiles}>
-        {visible.map((p) => (
-          <ParticipantTile key={p.identity} participant={p} />
-        ))}
-      </div>
-      {/* A viewer's watching is fully automatic (BoardExperience auto-joins/
-          leaves based on whether a collaborator/owner is actually in the
-          call) — no manual controls for them, including Leave, since
-          there's nothing for them to start or stop themselves. */}
-      {canPublish && (
-        <div className={styles.controls}>
-          <ControlButton
-            label={micEnabled ? "Mute" : "Unmute"}
-            icon={micEnabled ? "🎤" : "🔇"}
-            isActive={micEnabled}
-            onClick={onToggleMic}
-          />
-          <ControlButton
-            label={cameraEnabled ? "Camera off" : "Camera on"}
-            icon={cameraEnabled ? "📷" : "🚫"}
-            isActive={cameraEnabled}
-            onClick={onToggleCamera}
-          />
-          <ControlButton label="Leave call" icon="📞" variant="danger" onClick={onLeave} />
+    <div style={{ position: "fixed", left: position.x, top: position.y, zIndex: 20 }}>
+      <div
+        className={styles.card}
+        style={{
+          // Lift the strip while it's actively being moved/resized — the
+          // same "pick it up" depth cue drag-and-drop UIs (Trello, Figma)
+          // use, so the interaction feels physically grabbed rather than
+          // static.
+          boxShadow: isDragging || isResizing ? "0 10px 28px rgba(0,0,0,0.28)" : undefined,
+        }}
+      >
+        <div
+          className={styles.header}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            dragOrigin.current = { startX: e.clientX, startY: e.clientY, originX: position.x, originY: position.y };
+            setInteractionMode("dragging");
+          }}
+          style={{ cursor: isDragging ? "grabbing" : "grab" }}
+        >
+          <span aria-hidden="true">⠿</span>
+          📹 Call · {visible.length} on
         </div>
-      )}
+        <div style={{ position: "relative" }}>
+          <div className={styles.tiles} style={{ width: size.width, height: size.height, overflow: "auto" }}>
+            {visible.map((p) => (
+              <ParticipantTile key={p.identity} participant={p} size={tileSize} />
+            ))}
+          </div>
+          <div
+            onMouseDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              resizeOrigin.current = { startX: e.clientX, startY: e.clientY, originWidth: size.width, originHeight: size.height };
+              setInteractionMode("resizing");
+            }}
+            onMouseEnter={() => setResizeHover(true)}
+            onMouseLeave={() => setResizeHover(false)}
+            title="Drag to resize"
+            style={{
+              position: "absolute",
+              // The visible grip is small, but the hit target is padded out
+              // well beyond it so the corner is actually easy to grab.
+              right: -8,
+              bottom: -8,
+              width: 24,
+              height: 24,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "nwse-resize",
+              borderRadius: 7,
+              background: isResizing || resizeHover ? "var(--go)" : "transparent",
+              color: isResizing || resizeHover ? "#fff" : "var(--ink)",
+              fontSize: 12,
+              lineHeight: 1,
+              userSelect: "none",
+              transition: "background 0.12s ease, color 0.12s ease",
+            }}
+          >
+            <span aria-hidden="true">↘</span>
+          </div>
+        </div>
+        {/* A viewer's watching is fully automatic (BoardExperience auto-joins/
+            leaves based on whether a collaborator/owner is actually in the
+            call) — no manual controls for them, including Leave, since
+            there's nothing for them to start or stop themselves. */}
+        {canPublish && (
+          <div className={styles.controls}>
+            <ControlButton
+              label={micEnabled ? "Mute" : "Unmute"}
+              icon={micEnabled ? "🎤" : "🔇"}
+              isActive={micEnabled}
+              onClick={onToggleMic}
+            />
+            <ControlButton
+              label={cameraEnabled ? "Camera off" : "Camera on"}
+              icon={cameraEnabled ? "📷" : "🚫"}
+              isActive={cameraEnabled}
+              onClick={onToggleCamera}
+            />
+            <ControlButton label="Leave call" icon="📞" variant="danger" onClick={onLeave} />
+          </div>
+        )}
+      </div>
     </div>
   );
 }

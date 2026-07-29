@@ -86,3 +86,19 @@ To let people outside your machine log in, collaborate on a board, and video cal
 The client's build already bakes in *relative* URLs (`/sync`, `/api`, …) rather than an absolute `localhost` address, so it works unmodified regardless of what public URL reaches it — you never need to rebuild the client image just because the tunnel URL changed between sessions.
 
 Known limits of this setup: the laptop has to stay on and awake with both `docker-compose` and `cloudflared` running; all data lives only in the laptop's local Postgres volume, with nothing backed up; and the public URL isn't stable across restarts unless you later set up a paid/named Cloudflare Tunnel with your own domain.
+
+#### Stopping the session
+
+- In the terminal running `cloudflared`, press **Ctrl+C**. That immediately kills the public URL — nobody can reach the app anymore, even if Docker is still running.
+- Stop the Docker stack with `docker-compose stop`. This keeps the containers (and all data in the Postgres volume) around, just paused — faster to resume than tearing them down.
+
+#### Starting it again later
+
+The tunnel gives out a **new random URL every time**, so this is the same dance as the first setup, minus the build/signup steps:
+
+1. `docker-compose start` (resumes the existing containers — no rebuild, no `--build` needed unless code changed since last time).
+2. In a separate terminal: `cloudflared tunnel --url http://localhost:8080`, and copy the new `https://*.trycloudflare.com` URL it prints.
+3. Update `PUBLIC_URL` in `.env` to that new URL, then `docker-compose up -d app1 app2` to apply it (just those two containers, no rebuild).
+4. Open the new URL yourself to confirm it's working, then share it.
+
+If you'd rather fully tear the stack down instead of just pausing it (e.g. to free up RAM for a while), `docker-compose down` also keeps the Postgres data volume by default — only `docker-compose down -v` deletes it, which would wipe every board/account/message created during the session. Avoid `-v` unless you actually mean to reset everything.
