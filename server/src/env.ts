@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { hostname } from "node:os";
 import { z } from "zod";
 
 const envSchema = z.object({
@@ -11,6 +12,8 @@ const envSchema = z.object({
   LIVEKIT_URL: z.string(),
   LIVEKIT_API_KEY: z.string(),
   LIVEKIT_API_SECRET: z.string(),
+  REDIS_URL: z.string(),
+  INSTANCE_NAME: z.string().default(hostname()),
 });
 
 export const env = envSchema.parse(process.env);
