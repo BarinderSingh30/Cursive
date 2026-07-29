@@ -1,0 +1,8 @@
+# Both server/Dockerfile and client/Dockerfile use the repo root as their
+# build context, so this one file covers both. Keeps local secrets and
+# build/dependency output out of every image layer.
+node_modules
+**/node_modules
+.git
+**/.env
+client/dist

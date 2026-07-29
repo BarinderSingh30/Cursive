@@ -54,6 +54,12 @@ services:
       - "7881:7881"
       - "50000-50100:50000-50100/udp"
 
+  # Runs `prisma migrate deploy` before `npm run start` (see server/Dockerfile's
+  # CMD). app2 waits on app1 being healthy (below) specifically so the two
+  # instances don't run `prisma migrate deploy` concurrently at startup —
+  # app1's /health endpoint only responds once its migration has finished and
+  # the server has come up, so by the time app2 is allowed to start, app1's
+  # migration has already applied cleanly.
   app1:
     build:
       context: .
@@ -73,11 +79,24 @@ services:
       REDIS_URL: redis://redis:6379
       CLIENT_URL: http://localhost:8081
       BETTER_AUTH_URL: http://localhost:8080
+      # NOTE: these secrets are scoped to the Docker stack and deliberately
+      # differ from a local `server/.env`. Cookies are scoped by host, not
+      # port, so a session minted by `npm run dev` (localhost:4000) and one
+      # minted by this stack (localhost:8080) share a cookie name on
+      # `localhost` but are signed with different keys — switching between
+      # the two looks like a silent auth failure until cookies are cleared.
+      # See the matching note in server/.env.example.
       BETTER_AUTH_SECRET: dev-only-not-a-real-secret-app-0001
       SYNC_TICKET_SECRET: dev-only-not-a-real-secret-app-0002
       LIVEKIT_URL: ws://livekit:7880
       LIVEKIT_API_KEY: devkey
       LIVEKIT_API_SECRET: secret
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:4000/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   app2:
     build:
@@ -89,6 +108,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      app1:
+        condition: service_healthy
     ports:
       - "4002:4000"
     environment:
@@ -98,6 +119,7 @@ services:
       REDIS_URL: redis://redis:6379
       CLIENT_URL: http://localhost:8081
       BETTER_AUTH_URL: http://localhost:8080
+      # See the matching NOTE on app1, above.
       BETTER_AUTH_SECRET: dev-only-not-a-real-secret-app-0001
       SYNC_TICKET_SECRET: dev-only-not-a-real-secret-app-0002
       LIVEKIT_URL: ws://livekit:7880

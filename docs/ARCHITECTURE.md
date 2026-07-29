@@ -1,6 +1,6 @@
 # Architecture
 
-This doc is updated as each phase in [`ROADMAP.md`](ROADMAP.md) lands. Right now it describes Phase 1 only.
+This doc is updated as each phase in [`ROADMAP.md`](ROADMAP.md) lands. Phases 1, 2, and 8 are written up in full below; Phases 3-7 shipped but aren't backfilled here yet — see `ROADMAP.md` for what each of those actually built in the meantime.
 
 ## Phase 1: Canvas + sync
 
@@ -22,6 +22,10 @@ No accounts, no persistence to a database, and only one server instance exist ye
 - **The Yjs sync connection now requires proof of identity, and a WebSocket handshake can't carry a cookie the way a normal API call can (the session cookie is httpOnly, so client JS can't read and forward it, and relying on the browser to attach it automatically across dev ports is fragile).** The fix: the client calls `GET /api/boards/:boardId/sync-ticket` (a normal, cookie-authenticated REST call) right before connecting, which mints a short-lived signed JWT encoding `{userId, boardId, role}`. That ticket is passed to Hocuspocus as its connection token; Hocuspocus's `onAuthenticate` hook verifies the signature and board match, and — this is the actual enforcement point — sets `connection.readOnly = true` for anything below `collaborator`. This was verified with live connections, not just read as correct: a viewer's attempted edit never reached the server's stored document, confirmed both on another client's live connection and on a brand-new connection pulling fresh from the server.
 - **Boards and friends are deliberately linked**: you can only add someone to a board if they're already an accepted friend. This gives the friends feature an actual purpose in Phase 2 rather than being a disconnected feature shipped for its own sake.
 
+## Phases 3-7
+
+Chat + video calls + anonymous viewer links + public board discovery (Home page) + the "Pale Cork" UI overhaul all shipped between Phase 2 and Phase 8 — see `ROADMAP.md` for what each one built. Not backfilled into this doc yet; Phase 8 (below) is written up because it's the one that changes the *architecture* diagram (single instance → many), not just app-level functionality.
+
 ## Phase 8: Scale-out
 
 - Three pieces of state that previously lived only in one server process's memory now live in **Redis**, shared across every instance:
@@ -33,7 +37,4 @@ No accounts, no persistence to a database, and only one server instance exist ye
 
 ## What's coming
 
-- **Phase 3** adds chat (DMs + group chats) over a second WebSocket path alongside Hocuspocus's own.
-- **Phase 4** adds video calls via a self-hosted LiveKit server, with the same role concept gating who can publish camera/mic.
-- **Phase 5** extends `boardAccess.ts` with a second branch: a signed, scoped, time-limited anonymous viewer token that needs no account and no database row.
-- **Phase 9** brings the canvas itself much closer to a real creative tool: brushes/strokes, layers, and richer object styling.
+- **Phase 9** (the only phase left) brings the canvas itself much closer to a real creative tool: brushes/strokes, layers, and richer object styling.

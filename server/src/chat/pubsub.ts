@@ -48,8 +48,18 @@ export class RedisPubSub implements PubSub {
 
   constructor() {
     this.subscriber.on("message", (channel: string, raw: string) => {
-      const payload = JSON.parse(raw) as unknown;
-      this.handlers.get(channel)?.forEach((handler) => handler(payload));
+      // A throw inside an EventEmitter listener is an uncaught exception
+      // that kills the process — and Redis is reachable unauthenticated in
+      // the Docker stack, so a malformed published message must not be able
+      // to take the whole instance down. Log and drop instead of rethrowing,
+      // matching the `.catch()` treatment every other Redis touchpoint in
+      // this file gets.
+      try {
+        const payload = JSON.parse(raw) as unknown;
+        this.handlers.get(channel)?.forEach((handler) => handler(payload));
+      } catch (error) {
+        console.error(`Failed to handle message on Redis channel ${channel}:`, error);
+      }
     });
   }
 
