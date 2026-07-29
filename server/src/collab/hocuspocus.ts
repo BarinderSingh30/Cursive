@@ -1,10 +1,31 @@
+import { randomUUID } from "node:crypto";
 import { Server } from "@hocuspocus/server";
 import { Redis as HocuspocusRedis } from "@hocuspocus/extension-redis";
 import { roleAtLeast } from "@cursive/shared";
+import type { BoardRole } from "@cursive/shared";
 import { persistenceExtensions } from "./persistence.js";
 import { verifyConnectionTicket } from "../authorization/connectionTicket.js";
 import { recordBoardView } from "./viewCounting.js";
+import { markViewerActive, markViewerGone, countActiveViewers, startHeartbeat, stopHeartbeat } from "./viewerPresence.js";
 import { redis } from "../redis/client.js";
+
+/**
+ * Shape of the object `onAuthenticate` returns, available as `context` in
+ * every later hook. Documentation only — @hocuspocus/server's hook payload
+ * types (this installed version) type `context` as plain `any` rather than
+ * threading a generic through `Server.configure`, so this isn't enforced by
+ * the compiler, only by us returning exactly this shape below.
+ */
+interface SyncContext {
+  userId: string;
+  role: BoardRole;
+  connectionId: string;
+}
+
+// Heartbeat timers are per-instance, in-memory state (a setInterval handle
+// isn't something to share across instances) — only the presence data they
+// write to Redis needs to be shared.
+const heartbeatTimers = new Map<string, NodeJS.Timeout>();
 
 /**
  * Hosts every board's Yjs document and relays sync updates between clients.
@@ -34,13 +55,33 @@ export const hocuspocus = Server.configure({
       connection.readOnly = true;
     }
 
-    return { userId: payload.userId, role: payload.role };
+    return { userId: payload.userId, role: payload.role, connectionId: randomUUID() };
   },
   connected: async ({ context, documentName }) => {
     try {
       await recordBoardView(documentName, context.role);
     } catch (error) {
       console.error(`Failed to record board view for ${documentName}:`, error);
+    }
+
+    if (context.role !== "owner") {
+      await markViewerActive(documentName, context.connectionId).catch((error) => {
+        console.error(`Failed to record viewer presence for ${documentName}:`, error);
+      });
+      heartbeatTimers.set(context.connectionId, startHeartbeat(documentName, context.connectionId));
+    }
+  },
+  onDisconnect: async ({ context, documentName }) => {
+    const timer = heartbeatTimers.get(context.connectionId);
+    if (timer) {
+      stopHeartbeat(timer);
+      heartbeatTimers.delete(context.connectionId);
+    }
+
+    if (context.role !== "owner") {
+      await markViewerGone(documentName, context.connectionId).catch((error) => {
+        console.error(`Failed to clear viewer presence for ${documentName}:`, error);
+      });
     }
   },
 });
@@ -66,13 +107,12 @@ export function notifyBoardDeleted(boardId: string) {
 }
 
 /**
- * Live viewer count for the Home page: every currently-open connection to
- * this board except the owner's own, mirroring recordBoardView's exclusion.
- * Returns 0 if nobody's connected — Hocuspocus only keeps a Document in
- * memory while at least one connection is open.
+ * Live viewer count for the Home page: every board's currently-active
+ * (non-owner) connections, tracked in Redis so the count is correct
+ * regardless of which server instance answers the request — previously this
+ * read Hocuspocus's local in-memory `documents` map, which only ever saw
+ * connections held by this one process.
  */
-export function getLiveViewerCount(boardId: string): number {
-  const doc = hocuspocus.documents.get(boardId);
-  if (!doc) return 0;
-  return doc.getConnections().filter((connection) => connection.context?.role !== "owner").length;
+export async function getLiveViewerCount(boardId: string): Promise<number> {
+  return countActiveViewers(boardId);
 }

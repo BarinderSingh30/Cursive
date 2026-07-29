@@ -23,8 +23,8 @@ export async function listPublicBoards(limit: number = PAGE_SIZE, ownerIds?: str
     include: { owner: true },
   });
 
-  const ranked = boards
-    .map((board) => ({
+  const boardsWithViewerCounts = await Promise.all(
+    boards.map(async (board) => ({
       id: board.id,
       name: board.name,
       ownerName: board.owner.name ?? "Anonymous",
@@ -33,16 +33,18 @@ export async function listPublicBoards(limit: number = PAGE_SIZE, ownerIds?: str
       // non-null assertion (rather than `as string`) documents that the
       // guarantee comes from the query, not a blind cast.
       shareToken: board.shareToken!,
-      liveViewerCount: getLiveViewerCount(board.id),
+      liveViewerCount: await getLiveViewerCount(board.id),
       totalViews: board.totalViews,
       createdAt: board.createdAt,
       content: board.content,
-    }))
-    .sort((a, b) => {
-      if (a.liveViewerCount !== b.liveViewerCount) return b.liveViewerCount - a.liveViewerCount;
-      if (a.totalViews !== b.totalViews) return b.totalViews - a.totalViews;
-      return b.createdAt.getTime() - a.createdAt.getTime();
-    });
+    })),
+  );
+
+  const ranked = boardsWithViewerCounts.sort((a, b) => {
+    if (a.liveViewerCount !== b.liveViewerCount) return b.liveViewerCount - a.liveViewerCount;
+    if (a.totalViews !== b.totalViews) return b.totalViews - a.totalViews;
+    return b.createdAt.getTime() - a.createdAt.getTime();
+  });
 
   return {
     // Only decode thumbnails for the boards actually being returned — the
