@@ -1,4 +1,5 @@
 FROM node:20-alpine AS deps
+RUN apk add --no-cache openssl
 WORKDIR /repo
 COPY package.json package-lock.json ./
 COPY client/package.json client/package.json
