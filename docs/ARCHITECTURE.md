@@ -22,9 +22,18 @@ No accounts, no persistence to a database, and only one server instance exist ye
 - **The Yjs sync connection now requires proof of identity, and a WebSocket handshake can't carry a cookie the way a normal API call can (the session cookie is httpOnly, so client JS can't read and forward it, and relying on the browser to attach it automatically across dev ports is fragile).** The fix: the client calls `GET /api/boards/:boardId/sync-ticket` (a normal, cookie-authenticated REST call) right before connecting, which mints a short-lived signed JWT encoding `{userId, boardId, role}`. That ticket is passed to Hocuspocus as its connection token; Hocuspocus's `onAuthenticate` hook verifies the signature and board match, and — this is the actual enforcement point — sets `connection.readOnly = true` for anything below `collaborator`. This was verified with live connections, not just read as correct: a viewer's attempted edit never reached the server's stored document, confirmed both on another client's live connection and on a brand-new connection pulling fresh from the server.
 - **Boards and friends are deliberately linked**: you can only add someone to a board if they're already an accepted friend. This gives the friends feature an actual purpose in Phase 2 rather than being a disconnected feature shipped for its own sake.
 
+## Phase 8: Scale-out
+
+- Three pieces of state that previously lived only in one server process's memory now live in **Redis**, shared across every instance:
+  - **Yjs sync** — `@hocuspocus/extension-redis`, added alongside the existing Postgres persistence extension in `server/src/collab/hocuspocus.ts`. It uses Redis pub/sub to relay document updates and awareness between instances, so a client connected to one instance and a client connected to another stay in sync.
+  - **Chat delivery** — `server/src/chat/pubsub.ts`'s in-process pub/sub (deliberately built swappable in Phase 3) is replaced by a Redis-backed implementation behind the same interface, used by both the DM/group chat gateway and the board-chat gateway.
+  - **Live viewer counts** — previously read Hocuspocus's local in-memory connection list, which only ever reflected whichever single instance answered a given Home-page request. Now backed by a Redis sorted set per board (`server/src/collab/viewerPresence.ts`), with a heartbeat that refreshes each active connection's entry and a stale-entry prune on every read — so a crashed instance's connections age out on their own, with no explicit cleanup code.
+- Better Auth's sessions did **not** need a Redis-backed cache: they're already persisted in Postgres via the Prisma adapter, so a session created against one instance was already readable by another.
+- The whole stack — client, two server instances (`app1`/`app2`), nginx, Redis, Postgres, and LiveKit — now runs via `docker-compose up`, with nginx (`docker/nginx/nginx.conf`) load-balancing the two server instances with plain round-robin and no sticky sessions, safe specifically because the Redis-backed state above no longer makes it matter which instance a connection lands on.
+
 ## What's coming
 
 - **Phase 3** adds chat (DMs + group chats) over a second WebSocket path alongside Hocuspocus's own.
 - **Phase 4** adds video calls via a self-hosted LiveKit server, with the same role concept gating who can publish camera/mic.
 - **Phase 5** extends `boardAccess.ts` with a second branch: a signed, scoped, time-limited anonymous viewer token that needs no account and no database row.
-- **Phase 6** turns this into a real horizontally-scaled deployment: multiple Node instances behind nginx, sharing state through Redis and Postgres instead of each instance's own memory.
+- **Phase 9** brings the canvas itself much closer to a real creative tool: brushes/strokes, layers, and richer object styling.
