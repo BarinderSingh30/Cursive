@@ -69,6 +69,20 @@ Requires Node.js 20+.
 docker-compose up --build
 ```
 
-Brings up the client, two server instances, nginx, Redis, Postgres, and LiveKit together, with nginx load-balancing across both server instances. Open **http://localhost:8081** (the client) — API/WebSocket traffic is proxied through nginx at `localhost:8080`.
+Brings up the client, two server instances, nginx, Redis, Postgres, and LiveKit together, with nginx load-balancing across both server instances. Open **http://localhost:8080** — nginx serves the client there too (not just the API/WebSocket routes), which is what lets the whole app work behind a single public URL below. (`localhost:8081` still reaches the client container directly, bypassing nginx, if you need that for debugging.)
 
 Note: local dev and the Docker stack sign session cookies with different secrets but share the same cookie name on `localhost` — switching between the two without clearing cookies can cause silent auth failures.
+
+### Sharing it over the internet (temporary, no domain needed)
+
+To let people outside your machine log in, collaborate on a board, and video call, without buying a domain or renting a server — run the Docker stack on your own laptop and open a [Cloudflare Tunnel](https://github.com/cloudflare/cloudflared) to it. The tunnel gives you a free, random `https://*.trycloudflare.com` URL for as long as it stays running; it changes every time you restart it.
+
+1. Copy `.env.example` to `.env` (gitignored — never committed) and fill in real random values for `BETTER_AUTH_SECRET` and `SYNC_TICKET_SECRET` (e.g. `openssl rand -base64 32`). The checked-in defaults in `docker-compose.yml` are dev placeholders, fine for `localhost`-only use, not for a session real people log into.
+2. For video calls to work for a remote friend, sign up free at [cloud.livekit.io](https://cloud.livekit.io), create a project, and fill in `LIVEKIT_CLOUD_URL` / `LIVEKIT_CLOUD_API_KEY` / `LIVEKIT_CLOUD_API_SECRET` in `.env` from its Settings page — the self-hosted `livekit` container in this stack only advertises `127.0.0.1` as its media address, so it can't reach anyone off your laptop. LiveKit Cloud's hosted SFU has real TURN infrastructure and works over the open internet with no port-forwarding.
+3. Build once and bring the stack up: `docker-compose build && docker-compose up -d`.
+4. In a separate terminal, start the tunnel pointed at nginx's port: `cloudflared tunnel --url http://localhost:8080`. It prints a `https://*.trycloudflare.com` URL — that's the link to share.
+5. Set `PUBLIC_URL` in `.env` to that URL, then apply it with `docker-compose up -d app1 app2` (only those two containers read it, as a runtime env var — no rebuild needed).
+
+The client's build already bakes in *relative* URLs (`/sync`, `/api`, …) rather than an absolute `localhost` address, so it works unmodified regardless of what public URL reaches it — you never need to rebuild the client image just because the tunnel URL changed between sessions.
+
+Known limits of this setup: the laptop has to stay on and awake with both `docker-compose` and `cloudflared` running; all data lives only in the laptop's local Postgres volume, with nothing backed up; and the public URL isn't stable across restarts unless you later set up a paid/named Cloudflare Tunnel with your own domain.
