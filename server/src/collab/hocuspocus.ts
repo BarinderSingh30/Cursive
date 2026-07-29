@@ -1,8 +1,10 @@
 import { Server } from "@hocuspocus/server";
+import { Redis as HocuspocusRedis } from "@hocuspocus/extension-redis";
 import { roleAtLeast } from "@cursive/shared";
 import { persistenceExtensions } from "./persistence.js";
 import { verifyConnectionTicket } from "../authorization/connectionTicket.js";
 import { recordBoardView } from "./viewCounting.js";
+import { redis } from "../redis/client.js";
 
 /**
  * Hosts every board's Yjs document and relays sync updates between clients.
@@ -17,7 +19,7 @@ import { recordBoardView } from "./viewCounting.js";
  */
 export const hocuspocus = Server.configure({
   name: "whiteboard-sync",
-  extensions: persistenceExtensions,
+  extensions: [...persistenceExtensions, new HocuspocusRedis({ redis })],
   onAuthenticate: async ({ token, documentName, connection }) => {
     const payload = verifyConnectionTicket(token);
     if (!payload || payload.purpose !== "board-sync" || payload.boardId !== documentName) {
