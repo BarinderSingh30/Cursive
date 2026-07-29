@@ -6,7 +6,9 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: cursive
-      POSTGRES_PASSWORD: cursive_dev_password
+      # Override via a root .env file (gitignored) for anything other than
+      # plain local dev — see .env.example.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cursive_dev_password}
       POSTGRES_DB: cursive
     ports:
       - "5432:5432"
@@ -77,22 +79,38 @@ services:
     environment:
       INSTANCE_NAME: app1
       PORT: 4000
-      DATABASE_URL: postgresql://cursive:cursive_dev_password@postgres:5432/cursive?schema=public
+      DATABASE_URL: postgresql://cursive:${POSTGRES_PASSWORD:-cursive_dev_password}@postgres:5432/cursive?schema=public
       REDIS_URL: redis://redis:6379
-      CLIENT_URL: http://localhost:8081
-      BETTER_AUTH_URL: http://localhost:8080
+      # CLIENT_URL and BETTER_AUTH_URL are the same value on purpose: nginx
+      # serves the client and the API from one origin (see docker/nginx/
+      # nginx.conf's catch-all `location /`), so there's only one public URL
+      # for the whole app. Defaults to plain local docker-compose use;
+      # override PUBLIC_URL in a root .env file to point at a tunnel (e.g.
+      # `cloudflared tunnel --url http://localhost:8080`) — see .env.example.
+      CLIENT_URL: ${PUBLIC_URL:-http://localhost:8080}
+      BETTER_AUTH_URL: ${PUBLIC_URL:-http://localhost:8080}
       # NOTE: these secrets are scoped to the Docker stack and deliberately
       # differ from a local `server/.env`. Cookies are scoped by host, not
       # port, so a session minted by `npm run dev` (localhost:4000) and one
       # minted by this stack (localhost:8080) share a cookie name on
       # `localhost` but are signed with different keys — switching between
       # the two looks like a silent auth failure until cookies are cleared.
-      # See the matching note in server/.env.example.
-      BETTER_AUTH_SECRET: dev-only-not-a-real-secret-app-0001
-      SYNC_TICKET_SECRET: dev-only-not-a-real-secret-app-0002
-      LIVEKIT_URL: ws://livekit:7880
-      LIVEKIT_API_KEY: devkey
-      LIVEKIT_API_SECRET: secret
+      # See the matching note in server/.env.example. Override these via a
+      # root .env file (never commit real values) before exposing this
+      # stack to anyone outside your own machine — see .env.example.
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-dev-only-not-a-real-secret-app-0001}
+      SYNC_TICKET_SECRET: ${SYNC_TICKET_SECRET:-dev-only-not-a-real-secret-app-0002}
+      # Defaults to the self-hosted `livekit` service below (same-machine
+      # only, per its LIVEKIT_RTC_NODE_IP note). Set LIVEKIT_CLOUD_* in a
+      # root .env to point calls at a LiveKit Cloud project instead — the
+      # client never hardcodes a LiveKit URL, it uses whatever URL this
+      # server hands back at call-token time (see boards.routes.ts's
+      # `/call-token` route and client/src/call/useCall.ts's room.connect
+      # call), so this is the only place that needs to change. See
+      # .env.example.
+      LIVEKIT_URL: ${LIVEKIT_CLOUD_URL:-ws://livekit:7880}
+      LIVEKIT_API_KEY: ${LIVEKIT_CLOUD_API_KEY:-devkey}
+      LIVEKIT_API_SECRET: ${LIVEKIT_CLOUD_API_SECRET:-secret}
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:4000/health || exit 1"]
       interval: 5s
@@ -117,16 +135,17 @@ services:
     environment:
       INSTANCE_NAME: app2
       PORT: 4000
-      DATABASE_URL: postgresql://cursive:cursive_dev_password@postgres:5432/cursive?schema=public
+      DATABASE_URL: postgresql://cursive:${POSTGRES_PASSWORD:-cursive_dev_password}@postgres:5432/cursive?schema=public
       REDIS_URL: redis://redis:6379
-      CLIENT_URL: http://localhost:8081
-      BETTER_AUTH_URL: http://localhost:8080
       # See the matching NOTE on app1, above.
-      BETTER_AUTH_SECRET: dev-only-not-a-real-secret-app-0001
-      SYNC_TICKET_SECRET: dev-only-not-a-real-secret-app-0002
-      LIVEKIT_URL: ws://livekit:7880
-      LIVEKIT_API_KEY: devkey
-      LIVEKIT_API_SECRET: secret
+      CLIENT_URL: ${PUBLIC_URL:-http://localhost:8080}
+      BETTER_AUTH_URL: ${PUBLIC_URL:-http://localhost:8080}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-dev-only-not-a-real-secret-app-0001}
+      SYNC_TICKET_SECRET: ${SYNC_TICKET_SECRET:-dev-only-not-a-real-secret-app-0002}
+      # See the matching note on app1, above.
+      LIVEKIT_URL: ${LIVEKIT_CLOUD_URL:-ws://livekit:7880}
+      LIVEKIT_API_KEY: ${LIVEKIT_CLOUD_API_KEY:-devkey}
+      LIVEKIT_API_SECRET: ${LIVEKIT_CLOUD_API_SECRET:-secret}
 
   nginx:
     image: nginx:alpine
@@ -134,6 +153,7 @@ services:
     depends_on:
       - app1
       - app2
+      - client
     ports:
       - "8080:80"
     volumes:
@@ -144,10 +164,16 @@ services:
       context: .
       dockerfile: client/Dockerfile
       args:
-        VITE_SYNC_URL: ws://localhost:8080/sync
-        VITE_CHAT_SOCKET_URL: ws://localhost:8080/chat
-        VITE_BOARD_CHAT_SOCKET_URL: ws://localhost:8080/board-chat
-        VITE_API_URL: http://localhost:8080
+        # Relative, not absolute: the browser resolves these against
+        # whatever host actually served the page (localhost:8080, or a
+        # tunnel's public URL), so this image never needs rebuilding just
+        # because the public URL changed. Requires nginx.conf's catch-all
+        # `location /` so the client and API share one origin. See
+        # PUBLIC_URL in .env.example for the piece that DOES vary per-run.
+        VITE_SYNC_URL: /sync
+        VITE_CHAT_SOCKET_URL: /chat
+        VITE_BOARD_CHAT_SOCKET_URL: /board-chat
+        VITE_API_URL: ""
         VITE_LIVEKIT_URL: ws://localhost:7880
     restart: unless-stopped
     ports:
