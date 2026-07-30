@@ -1,0 +1,104 @@
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  background: var(--paper-sunk);
+  border-radius: var(--radius-lg);
+  padding: var(--space-2) var(--space-3);
+}
+
+.colorGroup {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.label {
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  color: var(--ink-faint);
+}
+
+.swatches {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: var(--radius-round);
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.swatchActive {
+  box-shadow: 0 0 0 2px var(--paper-sunk), 0 0 0 4px currentColor;
+}
+
+.colorInput {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-round);
+  cursor: pointer;
+  background: none;
+}
+
+.sliderGroup {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.sliderValue {
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  min-width: 34px;
+}
+
+.pill {
+  display: flex;
+  gap: 4px;
+  background: var(--paper);
+  border-radius: var(--radius-lg);
+  padding: 4px;
+  flex-wrap: wrap;
+}
+
+.tool {
+  border: none;
+  background: transparent;
+  color: var(--ink-soft);
+  font-family: var(--font-hand);
+  font-size: 14px;
+  padding: 5px 11px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.tool:hover {
+  color: var(--ink);
+}
+
+.tool:disabled {
+  color: var(--paper-border);
+  cursor: not-allowed;
+}
+
+.toolActive {
+  background: var(--note-yellow);
+  color: var(--ink);
+  box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.15);
+}
+
+.undoGroup {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
