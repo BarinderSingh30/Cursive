@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import * as Y from "yjs";
 import { LOCAL_ORIGIN } from "./localOrigin.js";
 
@@ -33,9 +33,12 @@ export function useUndoManager(doc: Y.Doc) {
     };
   }, [manager]);
 
+  const undo = useCallback(() => manager.undo(), [manager]);
+  const redo = useCallback(() => manager.redo(), [manager]);
+
   return {
-    undo: () => manager.undo(),
-    redo: () => manager.redo(),
+    undo,
+    redo,
     canUndo,
     canRedo,
   };

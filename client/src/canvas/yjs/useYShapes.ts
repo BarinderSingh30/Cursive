@@ -40,9 +40,9 @@ export function useYShapes(doc: Y.Doc) {
 
   const addShape = useCallback(
     (shape: Shape) => {
-      shapeSchema.parse(shape);
+      const parsedShape = shapeSchema.parse(shape);
       doc.transact(() => {
-        yShapes.set(shape.id, shapeToYMap(shape));
+        yShapes.set(parsedShape.id, shapeToYMap(parsedShape));
       }, LOCAL_ORIGIN);
     },
     [yShapes, doc],
@@ -77,10 +77,10 @@ export function useYShapes(doc: Y.Doc) {
    */
   const splitShape = useCallback(
     (id: string, replacements: Shape[]) => {
-      for (const shape of replacements) shapeSchema.parse(shape);
+      const parsedReplacements = replacements.map((s) => shapeSchema.parse(s));
       doc.transact(() => {
         yShapes.delete(id);
-        for (const shape of replacements) {
+        for (const shape of parsedReplacements) {
           yShapes.set(shape.id, shapeToYMap(shape));
         }
       }, LOCAL_ORIGIN);

@@ -182,10 +182,13 @@ export function CanvasStage({
     if (!shape) return;
 
     if (shape.type === "freehand") {
-      const runs = eraseFromPoints(shape.points, pointer.x - shape.x, pointer.y - shape.y, strokeWidth);
+      const eraseRadius = Math.max(strokeWidth, 8);
+      const runs = eraseFromPoints(shape.points, pointer.x - shape.x, pointer.y - shape.y, eraseRadius);
       if (runs.length === 0) {
         onRemoveShape(shape.id);
       } else if (runs.length === 1) {
+        const totalPoints = runs.reduce((sum, run) => sum + run.length, 0);
+        if (totalPoints === shape.points.length) return;
         onUpdateShape(shape.id, { points: runs[0]! });
       } else {
         onSplitShape(
@@ -250,6 +253,12 @@ export function CanvasStage({
     const pointer = getPointer(stage);
     if (!pointer) return;
 
+    if (e.evt.buttons === 0) {
+      isErasing.current = false;
+      isDrawing.current = false;
+      return;
+    }
+
     onCursorMove(pointer);
 
     if (activeTool === "eraser") {
@@ -299,6 +308,7 @@ export function CanvasStage({
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
       >
         <Layer>
           {shapes.map((shape) => (

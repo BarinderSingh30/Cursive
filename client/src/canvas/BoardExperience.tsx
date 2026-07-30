@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { roleAtLeast, type BoardRole } from "@cursive/shared";
+import { roleAtLeast, type BoardRole, type Shape } from "@cursive/shared";
 import { useYjsDocument } from "./yjs/useYjsDocument.js";
 import { useYShapes } from "./yjs/useYShapes.js";
 import { useAwareness } from "./yjs/useAwareness.js";
@@ -78,6 +78,14 @@ export function BoardExperience({
   } = useActiveTool();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selectedShape = useMemo(() => shapes.find((s) => s.id === selectedId) ?? null, [shapes, selectedId]);
+
+  // Switching away from the Select tool (eraser, a brush preset, etc.) means
+  // the previously-selected shape is no longer the thing being edited — clear
+  // it so the options bar shows the new tool's own defaults instead of stale
+  // per-shape values, and so its sliders don't keep restyling that shape.
+  useEffect(() => {
+    if (tool !== "select") setSelectedId(null);
+  }, [tool]);
 
   const canPublish = roleAtLeast(role, "collaborator");
   const { isJoined, participants, join, leave, toggleCamera, toggleMic } = useCall(boardId, canPublish, shareContext);
@@ -178,8 +186,17 @@ export function BoardExperience({
   // When a shape is selected, these edit it live; with nothing selected,
   // they fall back to setting the defaults used for the next shape drawn.
   const handleColorChange = (color: string) => {
-    if (selectedShape) updateShape(selectedShape.id, { strokeColor: color });
-    else setStrokeColor(color);
+    if (selectedShape) {
+      // Partial<Shape> distributes over Shape's discriminated union (Partial
+      // is a homomorphic mapped type), so it can't be mutated with a
+      // property that only some variants have — build the literal in one
+      // shot per branch instead.
+      const changes: Partial<Shape> =
+        selectedShape.type === "text" ? { strokeColor: color, fillColor: color } : { strokeColor: color };
+      updateShape(selectedShape.id, changes);
+    } else {
+      setStrokeColor(color);
+    }
   };
   const handleStrokeWidthChange = (width: number) => {
     if (selectedShape) updateShape(selectedShape.id, { strokeWidth: width });

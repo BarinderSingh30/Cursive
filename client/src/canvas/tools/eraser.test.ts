@@ -29,4 +29,15 @@ describe("eraseFromPoints", () => {
     const points = [0, 0, 10, 0, 20, 0];
     expect(eraseFromPoints(points, 10, 0, 5)).toEqual([]);
   });
+
+  it("is a structural no-op when the eraser misses every point in the stroke", () => {
+    // This is the exact case Stage.tsx's eraseAtPointer must detect and skip:
+    // a single run whose point count matches the original, meaning nothing
+    // was actually erased, so no update should be broadcast to peers.
+    const points = [0, 0, 10, 0, 20, 0, 30, 0];
+    const runs = eraseFromPoints(points, 1000, 1000, 5);
+    expect(runs).toEqual([points]);
+    expect(runs.length).toBe(1);
+    expect(runs[0]!.length).toBe(points.length);
+  });
 });
