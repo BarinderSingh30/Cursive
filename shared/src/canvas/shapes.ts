@@ -8,6 +8,9 @@ const baseShapeSchema = z.object({
   strokeColor: z.string(),
   strokeWidth: z.number(),
   opacity: z.number().min(0).max(1).default(1),
+  zIndex: z.number(),
+  locked: z.boolean().default(false),
+  groupId: z.string().nullable().default(null),
 });
 
 export const rectangleShapeSchema = baseShapeSchema.extend({

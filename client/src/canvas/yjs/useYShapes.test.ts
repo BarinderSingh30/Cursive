@@ -18,6 +18,9 @@ function makeRectangle(overrides: Partial<RectangleShape> = {}): RectangleShape 
     strokeWidth: 2,
     opacity: 1,
     fillColor: null,
+    zIndex: 1000,
+    locked: false,
+    groupId: null,
     ...overrides,
   };
 }
