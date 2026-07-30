@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import * as Y from "yjs";
 import { shapeSchema, type Shape } from "@cursive/shared";
+import { LOCAL_ORIGIN } from "./localOrigin.js";
 
 /**
  * Each shape is stored as its own Y.Map (one CRDT entry per field), not as a
@@ -39,10 +40,12 @@ export function useYShapes(doc: Y.Doc) {
 
   const addShape = useCallback(
     (shape: Shape) => {
-      shapeSchema.parse(shape);
-      yShapes.set(shape.id, shapeToYMap(shape));
+      const parsedShape = shapeSchema.parse(shape);
+      doc.transact(() => {
+        yShapes.set(parsedShape.id, shapeToYMap(parsedShape));
+      }, LOCAL_ORIGIN);
     },
-    [yShapes],
+    [yShapes, doc],
   );
 
   const updateShape = useCallback(
@@ -53,17 +56,37 @@ export function useYShapes(doc: Y.Doc) {
         for (const [key, value] of Object.entries(changes)) {
           existing.set(key, value);
         }
-      });
+      }, LOCAL_ORIGIN);
     },
     [yShapes, doc],
   );
 
   const removeShape = useCallback(
     (id: string) => {
-      yShapes.delete(id);
+      doc.transact(() => {
+        yShapes.delete(id);
+      }, LOCAL_ORIGIN);
     },
-    [yShapes],
+    [yShapes, doc],
   );
 
-  return { shapes, addShape, updateShape, removeShape };
+  /**
+   * Atomically replaces one shape with zero or more others in a single
+   * transaction — used by the eraser to split a freehand stroke without
+   * ever syncing a half-finished intermediate state.
+   */
+  const splitShape = useCallback(
+    (id: string, replacements: Shape[]) => {
+      const parsedReplacements = replacements.map((s) => shapeSchema.parse(s));
+      doc.transact(() => {
+        yShapes.delete(id);
+        for (const shape of parsedReplacements) {
+          yShapes.set(shape.id, shapeToYMap(shape));
+        }
+      }, LOCAL_ORIGIN);
+    },
+    [yShapes, doc],
+  );
+
+  return { shapes, addShape, updateShape, removeShape, splitShape };
 }

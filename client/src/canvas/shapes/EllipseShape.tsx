@@ -9,6 +9,7 @@ interface Props extends ShapeInteractionProps {
 export function EllipseShape({ shape, draggable, isSelected, onDragEnd, onClick }: Props) {
   return (
     <Ellipse
+      id={shape.id}
       x={shape.x}
       y={shape.y}
       radiusX={shape.radiusX}
@@ -16,6 +17,7 @@ export function EllipseShape({ shape, draggable, isSelected, onDragEnd, onClick 
       rotation={shape.rotation}
       stroke={shape.strokeColor}
       strokeWidth={shape.strokeWidth}
+      opacity={shape.opacity}
       fill={shape.fillColor ?? undefined}
       draggable={draggable}
       onClick={onClick}

@@ -1,10 +1,3 @@
-.row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
-  flex-wrap: wrap;
-}
-
 .pill {
   display: flex;
   gap: 4px;
@@ -36,34 +29,4 @@
   background: var(--note-yellow);
   color: var(--ink);
   box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.15);
-}
-
-.colorGroup {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.colorLabel {
-  font-family: var(--font-body);
-  font-size: 12.5px;
-  color: var(--ink-faint);
-}
-
-.swatches {
-  display: flex;
-  gap: 6px;
-}
-
-.swatch {
-  width: 18px;
-  height: 18px;
-  border-radius: var(--radius-round);
-  border: none;
-  cursor: pointer;
-  padding: 0;
-}
-
-.swatchActive {
-  box-shadow: 0 0 0 2px var(--paper-sunk), 0 0 0 4px currentColor;
 }

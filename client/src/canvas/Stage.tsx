@@ -5,19 +5,27 @@ import type { Shape, Tool } from "@cursive/shared";
 import { ShapeRenderer } from "./shapes/index.js";
 import { RemoteCursors } from "./cursors/RemoteCursors.js";
 import type { PresenceState } from "./yjs/useAwareness.js";
+import { isFarEnoughToSample } from "./tools/pointSampling.js";
+import { eraseFromPoints } from "./tools/eraser.js";
 
-const DEFAULT_STROKE_WIDTH = 2;
 const MIN_DRAG_DISTANCE = 3;
+const MIN_POINT_DISTANCE = 4;
 
 interface Props {
   shapes: Shape[];
   peers: Map<number, PresenceState>;
   activeTool: Tool;
-  /** Stroke color used for newly-drawn shapes — the Toolbar's pen colour swatches. */
+  /** Style used for newly-drawn shapes — the drawing-options bar's current defaults. */
   strokeColor: string;
+  strokeWidth: number;
+  opacity: number;
+  blendMode: "normal" | "multiply";
+  selectedId: string | null;
+  onSelectShape: (id: string | null) => void;
   readOnly?: boolean;
   onAddShape: (shape: Shape) => void;
   onUpdateShape: (id: string, changes: Partial<Shape>) => void;
+  onSplitShape: (id: string, replacements: Shape[]) => void;
   onRemoveShape: (id: string) => void;
   onCursorMove: (cursor: { x: number; y: number } | null) => void;
 }
@@ -68,15 +76,21 @@ export function CanvasStage({
   peers,
   activeTool,
   strokeColor,
+  strokeWidth,
+  opacity,
+  blendMode,
+  selectedId,
+  onSelectShape,
   readOnly = false,
   onAddShape,
   onUpdateShape,
+  onSplitShape,
   onRemoveShape,
   onCursorMove,
 }: Props) {
   const [draft, setDraft] = useState<Shape | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
   const isDrawing = useRef(false);
+  const isErasing = useRef(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const size = useContainerSize(containerRef);
 
@@ -87,12 +101,12 @@ export function CanvasStage({
       if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
       if ((e.key === "Delete" || e.key === "Backspace") && selectedId) {
         onRemoveShape(selectedId);
-        setSelectedId(null);
+        onSelectShape(null);
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [selectedId, onRemoveShape, readOnly]);
+  }, [selectedId, onRemoveShape, onSelectShape, readOnly]);
 
   const getPointer = (stage: Konva.Stage) => stage.getPointerPosition();
 
@@ -109,7 +123,8 @@ export function CanvasStage({
           height: 0,
           rotation: 0,
           strokeColor,
-          strokeWidth: DEFAULT_STROKE_WIDTH,
+          strokeWidth,
+          opacity,
           fillColor: null,
         };
       case "ellipse":
@@ -122,7 +137,8 @@ export function CanvasStage({
           radiusY: 0,
           rotation: 0,
           strokeColor,
-          strokeWidth: DEFAULT_STROKE_WIDTH,
+          strokeWidth,
+          opacity,
           fillColor: null,
         };
       case "line":
@@ -134,7 +150,8 @@ export function CanvasStage({
           points: [x, y, x, y],
           rotation: 0,
           strokeColor,
-          strokeWidth: DEFAULT_STROKE_WIDTH,
+          strokeWidth,
+          opacity,
         };
       case "freehand":
         return {
@@ -145,11 +162,44 @@ export function CanvasStage({
           points: [x, y],
           rotation: 0,
           strokeColor,
-          strokeWidth: DEFAULT_STROKE_WIDTH,
+          strokeWidth,
+          opacity,
+          blendMode,
         };
       default:
         return null;
     }
+  };
+
+  // Only freehand strokes can be meaningfully split at the erased point
+  // range; every other shape type is deleted outright on first touch.
+  const eraseAtPointer = (e: Konva.KonvaEventObject<MouseEvent>, pointer: { x: number; y: number }) => {
+    const stage = e.target.getStage();
+    if (!stage || e.target === stage) return;
+    const hitId = e.target.id();
+    if (!hitId) return;
+    const shape = shapes.find((s) => s.id === hitId);
+    if (!shape) return;
+
+    if (shape.type === "freehand") {
+      const eraseRadius = Math.max(strokeWidth, 8);
+      const runs = eraseFromPoints(shape.points, pointer.x - shape.x, pointer.y - shape.y, eraseRadius);
+      if (runs.length === 0) {
+        onRemoveShape(shape.id);
+      } else if (runs.length === 1) {
+        const totalPoints = runs.reduce((sum, run) => sum + run.length, 0);
+        if (totalPoints === shape.points.length) return;
+        onUpdateShape(shape.id, { points: runs[0]! });
+      } else {
+        onSplitShape(
+          shape.id,
+          runs.map((points) => ({ ...shape, id: crypto.randomUUID(), points })),
+        );
+      }
+      return;
+    }
+
+    onRemoveShape(shape.id);
   };
 
   const handleMouseDown = (e: Konva.KonvaEventObject<MouseEvent>) => {
@@ -158,7 +208,14 @@ export function CanvasStage({
     if (!stage) return;
 
     if (e.target === stage) {
-      setSelectedId(null);
+      onSelectShape(null);
+    }
+
+    if (activeTool === "eraser") {
+      isErasing.current = true;
+      const pointer = getPointer(stage);
+      if (pointer) eraseAtPointer(e, pointer);
+      return;
     }
 
     if (activeTool === "select") return;
@@ -176,6 +233,7 @@ export function CanvasStage({
           rotation: 0,
           strokeColor,
           strokeWidth: 0,
+          opacity,
           text,
           fontSize: 20,
           fillColor: strokeColor,
@@ -197,6 +255,17 @@ export function CanvasStage({
 
     onCursorMove(pointer);
 
+    if (e.evt.buttons === 0) {
+      isErasing.current = false;
+      isDrawing.current = false;
+      return;
+    }
+
+    if (activeTool === "eraser") {
+      if (isErasing.current) eraseAtPointer(e, pointer);
+      return;
+    }
+
     if (!isDrawing.current) return;
 
     setDraft((current) => {
@@ -211,6 +280,9 @@ export function CanvasStage({
         return { ...current, points: [current.points[0], current.points[1], pointer.x, pointer.y] };
       }
       if (current.type === "freehand") {
+        const lastX = current.points[current.points.length - 2]!;
+        const lastY = current.points[current.points.length - 1]!;
+        if (!isFarEnoughToSample(lastX, lastY, pointer.x, pointer.y, MIN_POINT_DISTANCE)) return current;
         return { ...current, points: [...current.points, pointer.x, pointer.y] };
       }
       return current;
@@ -218,6 +290,10 @@ export function CanvasStage({
   };
 
   const handleMouseUp = () => {
+    if (activeTool === "eraser") {
+      isErasing.current = false;
+      return;
+    }
     if (!isDrawing.current) return;
     isDrawing.current = false;
     if (draft && !isDegenerate(draft)) onAddShape(draft);
@@ -232,6 +308,7 @@ export function CanvasStage({
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
       >
         <Layer>
           {shapes.map((shape) => (
@@ -242,7 +319,7 @@ export function CanvasStage({
               isSelected={shape.id === selectedId}
               onDragEnd={(x, y) => onUpdateShape(shape.id, { x, y })}
               onClick={() => {
-                if (!readOnly && activeTool === "select") setSelectedId(shape.id);
+                if (!readOnly && activeTool === "select") onSelectShape(shape.id);
               }}
             />
           ))}

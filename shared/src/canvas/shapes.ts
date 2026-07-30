@@ -7,6 +7,7 @@ const baseShapeSchema = z.object({
   rotation: z.number().default(0),
   strokeColor: z.string(),
   strokeWidth: z.number(),
+  opacity: z.number().min(0).max(1).default(1),
 });
 
 export const rectangleShapeSchema = baseShapeSchema.extend({
@@ -32,6 +33,7 @@ export const lineShapeSchema = baseShapeSchema.extend({
 export const freehandShapeSchema = baseShapeSchema.extend({
   type: z.literal("freehand"),
   points: z.array(z.number()),
+  blendMode: z.enum(["normal", "multiply"]).default("normal"),
 });
 
 export const textShapeSchema = baseShapeSchema.extend({
