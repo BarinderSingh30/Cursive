@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { toolSchema, type Tool } from "@cursive/shared";
-import { useActiveTool, PEN_COLORS } from "./useActiveTool.js";
+import { useActiveTool } from "./useActiveTool.js";
 import styles from "./Toolbar.module.css";
 
 const TOOL_LABELS: Record<string, string> = {
@@ -19,10 +19,13 @@ const TOOL_SHORTCUTS: Record<string, Tool> = {
   l: "line",
   p: "freehand",
   t: "text",
+  e: "eraser",
 };
 
+const PILL_TOOLS = toolSchema.options.filter((option) => option !== "eraser");
+
 export function Toolbar() {
-  const { tool, setTool, penColor, setPenColor } = useActiveTool();
+  const { tool, setTool } = useActiveTool();
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -40,34 +43,17 @@ export function Toolbar() {
   }, [setTool]);
 
   return (
-    <div className={styles.row}>
-      <div className={styles.pill}>
-        {toolSchema.options.map((option) => (
-          <button
-            key={option}
-            type="button"
-            onClick={() => setTool(option)}
-            className={`${styles.tool} ${tool === option ? styles.toolActive : ""}`}
-          >
-            {TOOL_LABELS[option]}
-          </button>
-        ))}
-      </div>
-      <div className={styles.colorGroup}>
-        <span className={styles.colorLabel}>pen colour</span>
-        <div className={styles.swatches}>
-          {PEN_COLORS.map((color) => (
-            <button
-              key={color}
-              type="button"
-              aria-label={`Pen colour ${color}`}
-              onClick={() => setPenColor(color)}
-              className={`${styles.swatch} ${penColor === color ? styles.swatchActive : ""}`}
-              style={{ background: color, color }}
-            />
-          ))}
-        </div>
-      </div>
+    <div className={styles.pill}>
+      {PILL_TOOLS.map((option) => (
+        <button
+          key={option}
+          type="button"
+          onClick={() => setTool(option)}
+          className={`${styles.tool} ${tool === option ? styles.toolActive : ""}`}
+        >
+          {TOOL_LABELS[option]}
+        </button>
+      ))}
     </div>
   );
 }
