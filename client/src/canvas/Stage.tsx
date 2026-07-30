@@ -253,13 +253,13 @@ export function CanvasStage({
     const pointer = getPointer(stage);
     if (!pointer) return;
 
+    onCursorMove(pointer);
+
     if (e.evt.buttons === 0) {
       isErasing.current = false;
       isDrawing.current = false;
       return;
     }
-
-    onCursorMove(pointer);
 
     if (activeTool === "eraser") {
       if (isErasing.current) eraseAtPointer(e, pointer);
