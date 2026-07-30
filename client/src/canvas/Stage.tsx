@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Layer, Stage as KonvaStage } from "react-konva";
+import { Layer, Rect, Stage as KonvaStage } from "react-konva";
 import type Konva from "konva";
 import type { Shape, Tool } from "@cursive/shared";
 import { ShapeRenderer } from "./shapes/index.js";
@@ -89,10 +89,12 @@ export function CanvasStage({
   onCursorMove,
 }: Props) {
   const [draft, setDraft] = useState<Shape | null>(null);
+  const [eraserPreview, setEraserPreview] = useState<{ x: number; y: number } | null>(null);
   const isDrawing = useRef(false);
   const isErasing = useRef(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const size = useContainerSize(containerRef);
+  const eraserRadius = Math.max(strokeWidth, 8);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -182,8 +184,7 @@ export function CanvasStage({
     if (!shape) return;
 
     if (shape.type === "freehand") {
-      const eraseRadius = Math.max(strokeWidth, 8);
-      const runs = eraseFromPoints(shape.points, pointer.x - shape.x, pointer.y - shape.y, eraseRadius);
+      const runs = eraseFromPoints(shape.points, pointer.x - shape.x, pointer.y - shape.y, eraserRadius);
       if (runs.length === 0) {
         onRemoveShape(shape.id);
       } else if (runs.length === 1) {
@@ -255,6 +256,8 @@ export function CanvasStage({
 
     onCursorMove(pointer);
 
+    if (activeTool === "eraser") setEraserPreview(pointer);
+
     if (e.evt.buttons === 0) {
       isErasing.current = false;
       isDrawing.current = false;
@@ -300,15 +303,28 @@ export function CanvasStage({
     setDraft(null);
   };
 
+  const handleMouseLeave = () => {
+    handleMouseUp();
+    setEraserPreview(null);
+  };
+
+  useEffect(() => {
+    if (activeTool !== "eraser") setEraserPreview(null);
+  }, [activeTool]);
+
   return (
-    <div ref={containerRef} className="canvas-dot-grid" style={{ width: "100%", height: "100%" }}>
+    <div
+      ref={containerRef}
+      className="canvas-dot-grid"
+      style={{ width: "100%", height: "100%", cursor: activeTool === "eraser" ? "none" : undefined }}
+    >
       <KonvaStage
         width={size.width}
         height={size.height}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
+        onMouseLeave={handleMouseLeave}
       >
         <Layer>
           {shapes.map((shape) => (
@@ -324,6 +340,28 @@ export function CanvasStage({
             />
           ))}
           {draft && <ShapeRenderer shape={draft} draggable={false} isSelected={false} onDragEnd={() => {}} onClick={() => {}} />}
+          {activeTool === "eraser" && eraserPreview && (
+            <Rect
+              x={eraserPreview.x}
+              y={eraserPreview.y}
+              offsetX={eraserRadius * 1.1}
+              offsetY={eraserRadius * 0.75}
+              width={eraserRadius * 2.2}
+              height={eraserRadius * 1.5}
+              cornerRadius={eraserRadius * 0.3}
+              rotation={-8}
+              fill="#ffdce4"
+              stroke="#96677a"
+              strokeWidth={1.5}
+              shadowColor="black"
+              shadowBlur={6}
+              shadowOffsetX={2}
+              shadowOffsetY={3}
+              shadowOpacity={0.35}
+              listening={false}
+              perfectDrawEnabled={false}
+            />
+          )}
         </Layer>
         <RemoteCursors peers={peers} />
       </KonvaStage>

@@ -7,16 +7,24 @@ describe("eraseFromPoints", () => {
     expect(eraseFromPoints(points, 100, 100, 5)).toEqual([points]);
   });
 
-  it("trims one end when the eraser hits the first point", () => {
-    const points = [0, 0, 10, 0, 20, 0, 30, 0];
-    expect(eraseFromPoints(points, 0, 0, 5)).toEqual([[10, 0, 20, 0, 30, 0]]);
+  it("clips precisely at the circle boundary instead of dropping the whole segment", () => {
+    // A fast/coarse stroke can have widely-spaced sample points; erasing
+    // near one of them must only remove the touched sliver of the segment,
+    // not the entire stretch down to the next surviving point.
+    const points = [0, 0, 100, 0];
+    expect(eraseFromPoints(points, 100, 0, 10)).toEqual([[0, 0, 90, 0]]);
   });
 
-  it("splits into two runs when the eraser hits the middle", () => {
+  it("trims one end at the exact circle boundary when the eraser hits the first point", () => {
+    const points = [0, 0, 10, 0, 20, 0, 30, 0];
+    expect(eraseFromPoints(points, 0, 0, 5)).toEqual([[5, 0, 10, 0, 20, 0, 30, 0]]);
+  });
+
+  it("splits into two runs, each cut at the exact circle boundary, when the eraser hits the middle", () => {
     const points = [0, 0, 10, 0, 20, 0, 30, 0, 40, 0];
     expect(eraseFromPoints(points, 20, 0, 5)).toEqual([
-      [0, 0, 10, 0],
-      [30, 0, 40, 0],
+      [0, 0, 10, 0, 15, 0],
+      [25, 0, 30, 0, 40, 0],
     ]);
   });
 
@@ -25,9 +33,12 @@ describe("eraseFromPoints", () => {
     expect(eraseFromPoints(points, 5, 0, 50)).toEqual([]);
   });
 
-  it("drops a leftover fragment with fewer than 2 points", () => {
+  it("keeps precisely-clipped fragments on both sides of a middle hit even though the original bounding points are gone", () => {
     const points = [0, 0, 10, 0, 20, 0];
-    expect(eraseFromPoints(points, 10, 0, 5)).toEqual([]);
+    expect(eraseFromPoints(points, 10, 0, 5)).toEqual([
+      [0, 0, 5, 0],
+      [15, 0, 20, 0],
+    ]);
   });
 
   it("is a structural no-op when the eraser misses every point in the stroke", () => {
