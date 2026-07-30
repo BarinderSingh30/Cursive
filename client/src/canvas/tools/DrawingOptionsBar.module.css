@@ -39,14 +39,69 @@
   box-shadow: 0 0 0 2px var(--paper-sunk), 0 0 0 4px currentColor;
 }
 
+.colorInputWrap {
+  position: relative;
+  display: inline-flex;
+  width: 20px;
+  height: 20px;
+  box-sizing: border-box;
+  border: 1.5px solid var(--ink-faint);
+  border-radius: var(--radius-round);
+  cursor: pointer;
+}
+
+.colorInputWrap:hover {
+  border-color: var(--ink-soft);
+}
+
+.colorInputIcon {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-body);
+  font-size: 12px;
+  line-height: 1;
+  font-weight: 600;
+  color: #fff;
+  mix-blend-mode: difference;
+  pointer-events: none;
+}
+
 .colorInput {
-  width: 22px;
-  height: 22px;
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  height: 100%;
+  margin: 0;
   padding: 0;
   border: none;
   border-radius: var(--radius-round);
   cursor: pointer;
   background: none;
+}
+
+.colorInput:focus-visible {
+  outline: 2px solid var(--ink-faint);
+  outline-offset: 2px;
+}
+
+/* Reset the browser's internal swatch chrome so it renders as a plain
+   circle instead of the default inset/bordered square. */
+.colorInput::-webkit-color-swatch-wrapper {
+  padding: 0;
+  border-radius: var(--radius-round);
+}
+
+.colorInput::-webkit-color-swatch {
+  border: none;
+  border-radius: var(--radius-round);
+}
+
+.colorInput::-moz-color-swatch {
+  border: none;
+  border-radius: var(--radius-round);
 }
 
 .sliderGroup {

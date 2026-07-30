@@ -54,13 +54,18 @@ export function DrawingOptionsBar({
               style={{ background: swatch, color: swatch }}
             />
           ))}
-          <input
-            type="color"
-            aria-label="Custom colour"
-            value={color}
-            onChange={(e) => onColorChange(e.target.value)}
-            className={styles.colorInput}
-          />
+          <span className={styles.colorInputWrap} title="Custom colour">
+            <input
+              type="color"
+              aria-label="Custom colour"
+              value={color}
+              onChange={(e) => onColorChange(e.target.value)}
+              className={styles.colorInput}
+            />
+            <span className={styles.colorInputIcon} aria-hidden="true">
+              +
+            </span>
+          </span>
         </div>
       </div>
 
