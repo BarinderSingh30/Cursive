@@ -1,12 +1,45 @@
+<div align="center">
+
+<img src="client/public/favicon.svg" width="64" height="64" alt="Cursive logo" />
+
 # Cursive
 
-A real-time collaborative whiteboard — a stripped-down Figma/Excalidraw crossed with Discord and Twitch. Multiple people draw shapes and move things on the same canvas at once, see each other's live cursors and online status, with instant CRDT-based sync — no "last write wins" data loss. It grows from there into accounts, friends, chat, video calls, and a read-only broadcast mode for spectators.
+### Live cursors, board chat, calls — one pinboard.
+
+A real-time collaborative whiteboard — a stripped-down Figma/Excalidraw crossed with Discord and Twitch.
+Multiple people draw on the same canvas at once, see each other's live cursors and presence, with instant
+CRDT-based sync — no "last write wins" data loss.
+
+[![Status](https://img.shields.io/badge/status-complete-3D7A5A?style=for-the-badge)](docs/ROADMAP.md)
+[![Phases](https://img.shields.io/badge/phases-9%20%2F%209-4F3CC9?style=for-the-badge)](docs/ROADMAP.md)
+
+<br />
+
+![React](https://img.shields.io/badge/React-4F3CC9?style=for-the-badge&logo=react&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-3D7A5A?style=for-the-badge&logo=typescript&logoColor=white)
+![Vite](https://img.shields.io/badge/Vite-FF6B4A?style=for-the-badge&logo=vite&logoColor=white)
+![Yjs](https://img.shields.io/badge/Yjs-CRDT-4F3CC9?style=for-the-badge)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-3D7A5A?style=for-the-badge&logo=postgresql&logoColor=white)
+![Prisma](https://img.shields.io/badge/Prisma-FF6B4A?style=for-the-badge&logo=prisma&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-4F3CC9?style=for-the-badge&logo=docker&logoColor=white)
+![Redis](https://img.shields.io/badge/Redis-3D7A5A?style=for-the-badge&logo=redis&logoColor=white)
+![nginx](https://img.shields.io/badge/nginx-FF6B4A?style=for-the-badge&logo=nginx&logoColor=white)
+![LiveKit](https://img.shields.io/badge/LiveKit-WebRTC-4F3CC9?style=for-the-badge&logo=webrtc&logoColor=white)
+
+</div>
+
+<br />
+
+<p align="center">
+  <img src="docs/screenshots/board-layers.jpg" width="850" alt="Cursive board editor — canvas, brush options, layers panel, and board chat" />
+</p>
 
 ## Vision
 
 **Canvas & sync**
 - Draw shapes, move things, see everyone's edits merge instantly with no data loss (CRDT-based, not last-write-wins)
 - Live cursors and "who's online" presence for everyone in a board
+- Brushes (pencil/marker/highlighter/eraser), per-user undo/redo, and a layers panel with z-ordering, grouping, locking, and multi-select
 
 **Accounts & social**
 - Log in with email/password
@@ -29,6 +62,27 @@ A real-time collaborative whiteboard — a stripped-down Figma/Excalidraw crosse
 ## Status
 
 **Complete.** All 9 planned phases through 9b (layers) shipped — brushes/strokes and layers/z-ordering/grouping/locking/multi-select round out the canvas on top of sync, auth, chat, video calls, anonymous broadcast, public discovery, the UI pass, and horizontal scale-out. Phase 9c (richer per-object styling, image import) was scoped but deliberately not built — see [`docs/ROADMAP.md`](docs/ROADMAP.md) for the full phase-by-phase history and [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for how the system fits together.
+
+## Screens
+
+<table>
+<tr>
+<td width="50%"><img src="docs/screenshots/home.jpg" width="100%" alt="Home page — public board discovery" /><br/><sub align="center">Home — public board discovery, sorted by live viewers</sub></td>
+<td width="50%"><img src="docs/screenshots/dashboard.jpg" width="100%" alt="Dashboard of your boards" /><br/><sub align="center">Dashboard — boards you own or collaborate on</sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="docs/screenshots/friends.jpg" width="100%" alt="Friends list and add-friend panel" /><br/><sub align="center">Friends — add friends, then invite them to a board</sub></td>
+<td width="50%"><img src="docs/screenshots/messages.jpg" width="100%" alt="Direct messages with a friend" /><br/><sub align="center">Chat — DMs and group chats with friends</sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="docs/screenshots/share-dialog.jpg" width="100%" alt="Public watch link share dialog" /><br/><sub align="center">Share — a public, read-only watch link</sub></td>
+<td width="50%"><img src="docs/screenshots/watch.jpg" width="100%" alt="Anonymous read-only broadcast view" /><br/><sub align="center">Watch — fully anonymous, read-only broadcast view</sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="docs/screenshots/login.jpg" width="100%" alt="Log in page" /><br/><sub align="center">Log in — email/password via Better Auth</sub></td>
+<td width="50%"><img src="docs/screenshots/signup.jpg" width="100%" alt="Sign up page" /><br/><sub align="center">Sign up — "three clicks to your first board"</sub></td>
+</tr>
+</table>
 
 ## Tech stack
 
@@ -102,3 +156,7 @@ The tunnel gives out a **new random URL every time**, so this is the same dance 
 4. Open the new URL yourself to confirm it's working, then share it.
 
 If you'd rather fully tear the stack down instead of just pausing it (e.g. to free up RAM for a while), `docker-compose down` also keeps the Postgres data volume by default — only `docker-compose down -v` deletes it, which would wipe every board/account/message created during the session. Avoid `-v` unless you actually mean to reset everything.
+
+<div align="center">
+<sub>Built solo, phase by phase, as a portfolio project — see <a href="docs/ROADMAP.md">docs/ROADMAP.md</a> for the full build history.</sub>
+</div>
