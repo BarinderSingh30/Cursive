@@ -146,8 +146,10 @@ export function useYShapes(doc: Y.Doc) {
   const groupShapes = useCallback(
     (ids: string[]): string => {
       const groupId = `group-${crypto.randomUUID()}`;
-      const members = shapes.filter((s) => ids.includes(s.id));
-      const topZIndex = members.length > 0 ? Math.max(...members.map((m) => m.zIndex)) : nextZIndex(shapes);
+      const idSet = new Set(ids);
+      const allShapes = readShapes(yShapes);
+      const members = allShapes.filter((s) => idSet.has(s.id));
+      const topZIndex = members.length > 0 ? Math.max(...members.map((m) => m.zIndex)) : nextZIndex(allShapes);
       const assignments = packContiguous(members, topZIndex);
       doc.transact(() => {
         for (const member of members) {
@@ -155,21 +157,33 @@ export function useYShapes(doc: Y.Doc) {
           map?.set("groupId", groupId);
           map?.set("zIndex", assignments.get(member.id)!);
         }
+
+        // Auto-dissolve any prior group that drops to <=1 remaining member
+        // because some of its members just moved into the new group.
+        const remaining = readShapes(yShapes).filter((s) => !idSet.has(s.id));
+        const byGroup = new Map<string, Shape[]>();
+        for (const shape of remaining) {
+          if (!shape.groupId) continue;
+          byGroup.set(shape.groupId, [...(byGroup.get(shape.groupId) ?? []), shape]);
+        }
+        for (const groupMembers of byGroup.values()) {
+          if (groupMembers.length === 1) yShapes.get(groupMembers[0]!.id)?.set("groupId", null);
+        }
       }, LOCAL_ORIGIN);
       return groupId;
     },
-    [yShapes, doc, shapes],
+    [yShapes, doc],
   );
 
   const ungroupShapes = useCallback(
     (groupId: string) => {
       doc.transact(() => {
-        for (const shape of shapes) {
+        for (const shape of readShapes(yShapes)) {
           if (shape.groupId === groupId) yShapes.get(shape.id)?.set("groupId", null);
         }
       }, LOCAL_ORIGIN);
     },
-    [yShapes, doc, shapes],
+    [yShapes, doc],
   );
 
   const setLocked = useCallback(

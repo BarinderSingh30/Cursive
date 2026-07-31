@@ -159,6 +159,45 @@ describe("useYShapes", () => {
     expect(result.current.shapes.every((s) => s.groupId === null)).toBe(true);
   });
 
+  it("groupShapes reads live Yjs state so back-to-back calls without an intervening render both take effect", () => {
+    const doc = new Y.Doc();
+    const { result } = renderHook(() => useYShapes(doc));
+    act(() => result.current.addShape(makeRectangle({ id: "a" })));
+    act(() => result.current.addShape(makeRectangle({ id: "b" })));
+    act(() => result.current.addShape(makeRectangle({ id: "c" })));
+
+    let groupId1 = "";
+    let groupId2 = "";
+    act(() => {
+      groupId1 = result.current.groupShapes(["a", "b"]);
+      groupId2 = result.current.groupShapes(["b", "c"]);
+    });
+
+    const a = result.current.shapes.find((s) => s.id === "a")!;
+    const b = result.current.shapes.find((s) => s.id === "b")!;
+    const c = result.current.shapes.find((s) => s.id === "c")!;
+    // b moved into the second group; a was left as group1's sole remaining
+    // member, so group1 auto-dissolves.
+    expect(a.groupId).toBeNull();
+    expect(b.groupId).toBe(groupId2);
+    expect(c.groupId).toBe(groupId2);
+    expect(groupId1).not.toBe(groupId2);
+  });
+
+  it("groupShapes auto-dissolves a prior group that drops to one remaining member when some of its members regroup", () => {
+    const doc = new Y.Doc();
+    const { result } = renderHook(() => useYShapes(doc));
+    act(() => result.current.addShape(makeRectangle({ id: "a" })));
+    act(() => result.current.addShape(makeRectangle({ id: "b" })));
+    act(() => result.current.addShape(makeRectangle({ id: "c" })));
+    act(() => result.current.addShape(makeRectangle({ id: "d" })));
+
+    act(() => result.current.groupShapes(["a", "d"]));
+    act(() => result.current.groupShapes(["a", "b", "c"]));
+
+    expect(result.current.shapes.find((s) => s.id === "d")!.groupId).toBeNull();
+  });
+
   it("reorderShapes writes every id in the assignment map in one transaction", () => {
     const doc = new Y.Doc();
     let transactionCount = 0;
