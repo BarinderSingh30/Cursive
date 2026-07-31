@@ -41,7 +41,8 @@ export function createUpgradeHandler(hocuspocus: Hocuspocus) {
       return;
     }
 
-    // Phase 3 adds a call-signaling gateway branch here in a later task.
+    // Call signaling doesn't go through this router — LiveKit handles it
+    // directly via token minting (server/src/call/callToken.ts).
     socket.destroy();
   };
 }

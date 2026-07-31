@@ -9,7 +9,7 @@ A real-time collaborative whiteboard — a stripped-down Figma/Excalidraw crosse
 - Live cursors and "who's online" presence for everyone in a board
 
 **Accounts & social**
-- Log in with email/password or Google/GitHub
+- Log in with email/password
 - A dashboard of boards you own or collaborate on
 - Add other users as friends
 
@@ -28,7 +28,7 @@ A real-time collaborative whiteboard — a stripped-down Figma/Excalidraw crosse
 
 ## Status
 
-This is being built in 9 phases, each a working product on its own. **Phase 8 (scale-out) is complete** — the only phase left is Phase 9 (advanced sketching tools). See [`docs/ROADMAP.md`](docs/ROADMAP.md) for the full checklist and [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for how the system fits together as each phase lands.
+**Complete.** All 9 planned phases through 9b (layers) shipped — brushes/strokes and layers/z-ordering/grouping/locking/multi-select round out the canvas on top of sync, auth, chat, video calls, anonymous broadcast, public discovery, the UI pass, and horizontal scale-out. Phase 9c (richer per-object styling, image import) was scoped but deliberately not built — see [`docs/ROADMAP.md`](docs/ROADMAP.md) for the full phase-by-phase history and [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for how the system fits together.
 
 ## Tech stack
 

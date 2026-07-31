@@ -35,6 +35,7 @@ Chat + video calls + anonymous viewer links + public board discovery (Home page)
 - Better Auth's sessions did **not** need a Redis-backed cache: they're already persisted in Postgres via the Prisma adapter, so a session created against one instance was already readable by another.
 - The whole stack — client, two server instances (`app1`/`app2`), nginx, Redis, Postgres, and LiveKit — now runs via `docker-compose up`, with nginx (`docker/nginx/nginx.conf`) load-balancing the two server instances with plain round-robin and no sticky sessions, safe specifically because the Redis-backed state above no longer makes it matter which instance a connection lands on.
 
-## What's coming
+## Phase 9: Advanced sketching tools (concluded at 9b)
 
-- **Phase 9** (the only phase left) brings the canvas itself much closer to a real creative tool: brushes/strokes, layers, and richer object styling.
+- **9a (brushes/strokes)** and **9b (layers)** shipped — see `ROADMAP.md` for what each built (per-shape drawing options and presets, freehand input smoothing, per-user undo/redo via `Y.UndoManager`; z-ordered layers with fractional-midpoint reordering, flat grouping, per-shape locking, local-only hide, and real multi-select).
+- **9c (richer per-object styling, image import)** was scoped but deliberately not built. The project concludes here — 9a/9b already exercise the CRDT sync, authorization, and concurrency-safety patterns this portfolio piece exists to demonstrate.
