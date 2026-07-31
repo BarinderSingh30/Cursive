@@ -236,6 +236,16 @@ export function BoardExperience({
       for (const id of ids) (allHidden ? next.delete(id) : next.add(id));
       return next;
     });
+    // "A hidden shape cannot be selected or edited while hidden" — when this
+    // toggle is a hide (not an unhide), drop the newly-hidden ids from the
+    // selection too, so they stop being part of every bulk-restyle/move/
+    // delete operation the moment they're no longer visible. Unhiding
+    // deliberately does NOT auto-select.
+    setSelectedIds((current) => {
+      const allHidden = ids.every((id) => hiddenIds.has(id));
+      if (allHidden) return current; // this call is an unhide — leave selection alone
+      return current.filter((id) => !ids.includes(id));
+    });
   };
 
   const handleReorder = (rowKey: string, targetIndex: number) => {

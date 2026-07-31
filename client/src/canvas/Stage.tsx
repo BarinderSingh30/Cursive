@@ -108,7 +108,11 @@ export function CanvasStage({
       const target = e.target as HTMLElement | null;
       if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
       if ((e.key === "Delete" || e.key === "Backspace") && selectedIds.length > 0) {
-        const removableIds = selectedIds.filter((id) => !shapes.find((s) => s.id === id)?.locked);
+        // `shapes` here is the visible-only list — a selected id missing from
+        // it (hidden) must NOT be treated as removable just because
+        // `.find()` returned undefined. The real enforcement lives in
+        // useYShapes' removeShapes now; this is belt-and-braces.
+        const removableIds = selectedIds.filter((id) => shapes.find((s) => s.id === id)?.locked === false);
         if (removableIds.length > 0) onRemoveShapes(removableIds);
         onSelectionChange([]);
       }
@@ -395,11 +399,18 @@ export function CanvasStage({
               onDragEnd={(x, y) => {
                 const dx = x - shape.x;
                 const dy = y - shape.y;
+                // `shapes` is the visible-only list — another selected shape
+                // that's currently hidden won't be found here. Drop it from
+                // the move batch instead of defaulting its x/y to 0, which
+                // would silently teleport it to the canvas origin (synced to
+                // every collaborator, invisible to whoever dragged since the
+                // shape is hidden in their own view too).
+                const byId = new Map(shapes.map((s) => [s.id, s]));
                 const moves = selectedIds.includes(shape.id)
-                  ? selectedIds.map((id) => {
-                      if (id === shape.id) return { id, x, y };
-                      const other = shapes.find((s) => s.id === id);
-                      return { id, x: (other?.x ?? 0) + dx, y: (other?.y ?? 0) + dy };
+                  ? selectedIds.flatMap((id) => {
+                      if (id === shape.id) return [{ id, x, y }];
+                      const other = byId.get(id);
+                      return other ? [{ id, x: other.x + dx, y: other.y + dy }] : [];
                     })
                   : [{ id: shape.id, x, y }];
                 onMoveShapes(moves);

@@ -10,10 +10,18 @@ export function sortByZIndexDescending(shapes: Shape[]): Shape[] {
   return [...shapes].sort((a, b) => b.zIndex - a.zIndex || a.id.localeCompare(b.id));
 }
 
-/** Where a newly-created shape lands: on top of everything else. */
+/**
+ * Where a newly-created shape lands: on top of everything else.
+ *
+ * Filters to finite zIndex values before taking the max so a legacy shape
+ * (persisted before zIndex existed, coming back as `undefined`) can never
+ * turn this into `Math.max(...[NaN, ...])` === NaN — a NaN zIndex fails Zod's
+ * `z.number()` parse the moment anyone tries to draw on an old board.
+ */
 export function nextZIndex(shapes: Shape[]): number {
-  if (shapes.length === 0) return INITIAL_GAP;
-  return Math.max(...shapes.map((s) => s.zIndex)) + INITIAL_GAP;
+  const finite = shapes.map((s) => s.zIndex).filter((z) => Number.isFinite(z));
+  if (finite.length === 0) return INITIAL_GAP;
+  return Math.max(...finite) + INITIAL_GAP;
 }
 
 /**

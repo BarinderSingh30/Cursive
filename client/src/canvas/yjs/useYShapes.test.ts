@@ -112,6 +112,18 @@ describe("useYShapes", () => {
     expect(result.current.shapes.find((s) => s.id === "b")!.strokeColor).toBe("#000000");
   });
 
+  it("removeShapes skips a locked shape even if the caller asks to remove it", () => {
+    const doc = new Y.Doc();
+    const { result } = renderHook(() => useYShapes(doc));
+    act(() => result.current.addShape(makeRectangle({ id: "a" })));
+    act(() => result.current.addShape(makeRectangle({ id: "b" })));
+    act(() => result.current.setLocked(["b"], true));
+
+    act(() => result.current.removeShapes(["a", "b"]));
+
+    expect(result.current.shapes.map((s) => s.id)).toEqual(["b"]);
+  });
+
   it("removeShapes auto-dissolves a group that drops to one remaining member", () => {
     const doc = new Y.Doc();
     const { result } = renderHook(() => useYShapes(doc));

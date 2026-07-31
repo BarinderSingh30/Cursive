@@ -22,8 +22,24 @@ function shapeToYMap(shape: Shape): YShape {
   return map;
 }
 
+/**
+ * Boards drawn on before this phase have shapes with no `zIndex`/`locked`/
+ * `groupId` keys at all — `toJSON()` on those comes back with `zIndex:
+ * undefined`, which poisons `nextZIndex` into returning NaN and then fails
+ * Zod's `z.number()` parse the instant anyone draws a new shape. Normalizing
+ * at read time (rather than writing a migration) means it can never race a
+ * concurrent client and stays undo-safe.
+ */
 function readShapes(yShapes: Y.Map<YShape>): Shape[] {
-  return Array.from(yShapes.values()).map((yShape) => yShape.toJSON() as Shape);
+  return Array.from(yShapes.values()).map((yShape) => {
+    const raw = yShape.toJSON() as Shape;
+    return {
+      ...raw,
+      zIndex: Number.isFinite(raw.zIndex) ? raw.zIndex : 0,
+      locked: raw.locked ?? false,
+      groupId: raw.groupId ?? null,
+    } as Shape;
+  });
 }
 
 export function useYShapes(doc: Y.Doc) {
@@ -41,12 +57,15 @@ export function useYShapes(doc: Y.Doc) {
 
   const addShape = useCallback(
     (shape: Shape) => {
-      const parsedShape = shapeSchema.parse({ ...shape, zIndex: nextZIndex(shapes) });
+      // Reads live Yjs state (not the React-state `shapes` closure) so the
+      // new shape's zIndex is computed from what's actually in the doc right
+      // now, consistent with groupShapes/ungroupShapes.
+      const parsedShape = shapeSchema.parse({ ...shape, zIndex: nextZIndex(readShapes(yShapes)) });
       doc.transact(() => {
         yShapes.set(parsedShape.id, shapeToYMap(parsedShape));
       }, LOCAL_ORIGIN);
     },
-    [yShapes, doc, shapes],
+    [yShapes, doc],
   );
 
   const updateShape = useCallback(
@@ -95,9 +114,18 @@ export function useYShapes(doc: Y.Doc) {
 
   const removeShapes = useCallback(
     (ids: string[]) => {
-      const removedIds = new Set(ids);
       doc.transact(() => {
-        for (const id of ids) yShapes.delete(id);
+        // Guard against deleting a locked shape here too — this must not
+        // rely solely on callers pre-filtering, since a caller working off a
+        // filtered/stale shape list (e.g. a hidden-and-locked shape missing
+        // from a visible-only list) could otherwise pass a locked id through.
+        const removedIds = new Set<string>();
+        for (const id of ids) {
+          const existing = yShapes.get(id);
+          if (!existing || existing.get("locked")) continue;
+          yShapes.delete(id);
+          removedIds.add(id);
+        }
 
         // Auto-dissolve any group that drops to <=1 remaining member.
         const remaining = readShapes(yShapes).filter((s) => !removedIds.has(s.id));
