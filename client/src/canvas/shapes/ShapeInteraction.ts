@@ -1,8 +1,10 @@
+import type Konva from "konva";
+
 export interface ShapeInteractionProps {
   draggable: boolean;
   isSelected: boolean;
   onDragEnd: (x: number, y: number) => void;
-  onClick: () => void;
+  onClick: (e: Konva.KonvaEventObject<MouseEvent>) => void;
 }
 
 export const SELECTION_HIGHLIGHT = {

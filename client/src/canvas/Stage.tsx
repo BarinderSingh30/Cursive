@@ -7,6 +7,9 @@ import { RemoteCursors } from "./cursors/RemoteCursors.js";
 import type { PresenceState } from "./yjs/useAwareness.js";
 import { isFarEnoughToSample } from "./tools/pointSampling.js";
 import { eraseFromPoints } from "./tools/eraser.js";
+import { sortByZIndexAscending } from "./tools/zOrder.js";
+import { resolveClickSelection, shapesInMarquee } from "./selection/selection.js";
+import type { Box } from "./selection/boundingBox.js";
 
 const MIN_DRAG_DISTANCE = 3;
 const MIN_POINT_DISTANCE = 4;
@@ -15,18 +18,18 @@ interface Props {
   shapes: Shape[];
   peers: Map<number, PresenceState>;
   activeTool: Tool;
-  /** Style used for newly-drawn shapes — the drawing-options bar's current defaults. */
   strokeColor: string;
   strokeWidth: number;
   opacity: number;
   blendMode: "normal" | "multiply";
-  selectedId: string | null;
-  onSelectShape: (id: string | null) => void;
+  selectedIds: string[];
+  onSelectionChange: (ids: string[]) => void;
   readOnly?: boolean;
   onAddShape: (shape: Shape) => void;
   onUpdateShape: (id: string, changes: Partial<Shape>) => void;
+  onMoveShapes: (moves: { id: string; x: number; y: number }[]) => void;
   onSplitShape: (id: string, replacements: Shape[]) => void;
-  onRemoveShape: (id: string) => void;
+  onRemoveShapes: (ids: string[]) => void;
   onCursorMove: (cursor: { x: number; y: number } | null) => void;
 }
 
@@ -79,36 +82,40 @@ export function CanvasStage({
   strokeWidth,
   opacity,
   blendMode,
-  selectedId,
-  onSelectShape,
+  selectedIds,
+  onSelectionChange,
   readOnly = false,
   onAddShape,
   onUpdateShape,
+  onMoveShapes,
   onSplitShape,
-  onRemoveShape,
+  onRemoveShapes,
   onCursorMove,
 }: Props) {
   const [draft, setDraft] = useState<Shape | null>(null);
   const [eraserPreview, setEraserPreview] = useState<{ x: number; y: number } | null>(null);
+  const [marquee, setMarquee] = useState<(Box & { shiftKey: boolean }) | null>(null);
   const isDrawing = useRef(false);
   const isErasing = useRef(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const size = useContainerSize(containerRef);
   const eraserRadius = Math.max(strokeWidth, 8);
+  const orderedShapes = sortByZIndexAscending(shapes);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (readOnly) return;
       const target = e.target as HTMLElement | null;
       if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
-      if ((e.key === "Delete" || e.key === "Backspace") && selectedId) {
-        onRemoveShape(selectedId);
-        onSelectShape(null);
+      if ((e.key === "Delete" || e.key === "Backspace") && selectedIds.length > 0) {
+        const removableIds = selectedIds.filter((id) => !shapes.find((s) => s.id === id)?.locked);
+        if (removableIds.length > 0) onRemoveShapes(removableIds);
+        onSelectionChange([]);
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [selectedId, onRemoveShape, onSelectShape, readOnly]);
+  }, [selectedIds, shapes, onRemoveShapes, onSelectionChange, readOnly]);
 
   const getPointer = (stage: Konva.Stage) => stage.getPointerPosition();
 
@@ -128,6 +135,9 @@ export function CanvasStage({
           strokeWidth,
           opacity,
           fillColor: null,
+          zIndex: 0,
+          locked: false,
+          groupId: null,
         };
       case "ellipse":
         return {
@@ -142,6 +152,9 @@ export function CanvasStage({
           strokeWidth,
           opacity,
           fillColor: null,
+          zIndex: 0,
+          locked: false,
+          groupId: null,
         };
       case "line":
         return {
@@ -154,6 +167,9 @@ export function CanvasStage({
           strokeColor,
           strokeWidth,
           opacity,
+          zIndex: 0,
+          locked: false,
+          groupId: null,
         };
       case "freehand":
         return {
@@ -167,26 +183,29 @@ export function CanvasStage({
           strokeWidth,
           opacity,
           blendMode,
+          zIndex: 0,
+          locked: false,
+          groupId: null,
         };
       default:
         return null;
     }
   };
 
-  // Only freehand strokes can be meaningfully split at the erased point
-  // range; every other shape type is deleted outright on first touch.
+  // Erasing is a delete-by-a-different-name — a locked shape is protected
+  // from it exactly like Delete/drag/restyle.
   const eraseAtPointer = (e: Konva.KonvaEventObject<MouseEvent>, pointer: { x: number; y: number }) => {
     const stage = e.target.getStage();
     if (!stage || e.target === stage) return;
     const hitId = e.target.id();
     if (!hitId) return;
     const shape = shapes.find((s) => s.id === hitId);
-    if (!shape) return;
+    if (!shape || shape.locked) return;
 
     if (shape.type === "freehand") {
       const runs = eraseFromPoints(shape.points, pointer.x - shape.x, pointer.y - shape.y, eraserRadius);
       if (runs.length === 0) {
-        onRemoveShape(shape.id);
+        onRemoveShapes([shape.id]);
       } else if (runs.length === 1) {
         const totalPoints = runs.reduce((sum, run) => sum + run.length, 0);
         if (totalPoints === shape.points.length) return;
@@ -200,7 +219,7 @@ export function CanvasStage({
       return;
     }
 
-    onRemoveShape(shape.id);
+    onRemoveShapes([shape.id]);
   };
 
   const handleMouseDown = (e: Konva.KonvaEventObject<MouseEvent>) => {
@@ -209,7 +228,13 @@ export function CanvasStage({
     if (!stage) return;
 
     if (e.target === stage) {
-      onSelectShape(null);
+      if (activeTool === "select") {
+        const pointer = getPointer(stage);
+        if (pointer) setMarquee({ x1: pointer.x, y1: pointer.y, x2: pointer.x, y2: pointer.y, shiftKey: e.evt.shiftKey });
+        if (!e.evt.shiftKey) onSelectionChange([]);
+      } else {
+        onSelectionChange([]);
+      }
     }
 
     if (activeTool === "eraser") {
@@ -238,6 +263,9 @@ export function CanvasStage({
           text,
           fontSize: 20,
           fillColor: strokeColor,
+          zIndex: 0,
+          locked: false,
+          groupId: null,
         });
       }
       return;
@@ -261,6 +289,11 @@ export function CanvasStage({
     if (e.evt.buttons === 0) {
       isErasing.current = false;
       isDrawing.current = false;
+      return;
+    }
+
+    if (marquee) {
+      setMarquee({ ...marquee, x2: pointer.x, y2: pointer.y });
       return;
     }
 
@@ -293,6 +326,32 @@ export function CanvasStage({
   };
 
   const handleMouseUp = () => {
+    if (marquee) {
+      const width = Math.abs(marquee.x2 - marquee.x1);
+      const height = Math.abs(marquee.y2 - marquee.y1);
+      // A plain click (no real drag) on empty canvas — not a marquee. Without
+      // this, a zero-size box would still "intersect" any shape whose
+      // bounding box happens to cover that point, spuriously re-selecting a
+      // shape Konva itself correctly saw the click miss (e.g. clicking
+      // inside an unfilled rectangle's interior). Selection was already
+      // cleared (or left alone under shift) in handleMouseDown.
+      if (width < MIN_DRAG_DISTANCE && height < MIN_DRAG_DISTANCE) {
+        setMarquee(null);
+        return;
+      }
+      const box: Box = {
+        x1: Math.min(marquee.x1, marquee.x2),
+        y1: Math.min(marquee.y1, marquee.y2),
+        x2: Math.max(marquee.x1, marquee.x2),
+        y2: Math.max(marquee.y1, marquee.y2),
+      };
+      const hitIds = shapesInMarquee(shapes, box);
+      onSelectionChange(
+        marquee.shiftKey ? [...new Set([...selectedIds, ...hitIds])] : hitIds,
+      );
+      setMarquee(null);
+      return;
+    }
     if (activeTool === "eraser") {
       isErasing.current = false;
       return;
@@ -327,19 +386,33 @@ export function CanvasStage({
         onMouseLeave={handleMouseLeave}
       >
         <Layer>
-          {shapes.map((shape) => (
+          {orderedShapes.map((shape) => (
             <ShapeRenderer
               key={shape.id}
               shape={shape}
-              draggable={!readOnly && activeTool === "select"}
-              isSelected={shape.id === selectedId}
-              onDragEnd={(x, y) => onUpdateShape(shape.id, { x, y })}
-              onClick={() => {
-                if (!readOnly && activeTool === "select") onSelectShape(shape.id);
+              draggable={!readOnly && activeTool === "select" && !shape.locked}
+              isSelected={selectedIds.includes(shape.id)}
+              onDragEnd={(x, y) => {
+                const dx = x - shape.x;
+                const dy = y - shape.y;
+                const moves = selectedIds.includes(shape.id)
+                  ? selectedIds.map((id) => {
+                      if (id === shape.id) return { id, x, y };
+                      const other = shapes.find((s) => s.id === id);
+                      return { id, x: (other?.x ?? 0) + dx, y: (other?.y ?? 0) + dy };
+                    })
+                  : [{ id: shape.id, x, y }];
+                onMoveShapes(moves);
+              }}
+              onClick={(e) => {
+                if (readOnly || activeTool !== "select") return;
+                onSelectionChange(resolveClickSelection(shapes, shape.id, selectedIds, e.evt.shiftKey));
               }}
             />
           ))}
-          {draft && <ShapeRenderer shape={draft} draggable={false} isSelected={false} onDragEnd={() => {}} onClick={() => {}} />}
+          {draft && (
+            <ShapeRenderer shape={draft} draggable={false} isSelected={false} onDragEnd={() => {}} onClick={() => {}} />
+          )}
           {activeTool === "eraser" && eraserPreview && (
             <Rect
               x={eraserPreview.x}
@@ -360,6 +433,18 @@ export function CanvasStage({
               shadowOpacity={0.35}
               listening={false}
               perfectDrawEnabled={false}
+            />
+          )}
+          {marquee && (
+            <Rect
+              x={Math.min(marquee.x1, marquee.x2)}
+              y={Math.min(marquee.y1, marquee.y2)}
+              width={Math.abs(marquee.x2 - marquee.x1)}
+              height={Math.abs(marquee.y2 - marquee.y1)}
+              fill="rgba(25, 113, 194, 0.12)"
+              stroke="#1971c2"
+              strokeWidth={1}
+              listening={false}
             />
           )}
         </Layer>
