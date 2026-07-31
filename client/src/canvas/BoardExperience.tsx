@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { roleAtLeast, type BoardRole, type Shape } from "@cursive/shared";
+import { roleAtLeast, type BoardRole } from "@cursive/shared";
 import { useYjsDocument } from "./yjs/useYjsDocument.js";
 import { useYShapes } from "./yjs/useYShapes.js";
 import { useAwareness } from "./yjs/useAwareness.js";
@@ -9,6 +9,9 @@ import { useActiveTool } from "./tools/useActiveTool.js";
 import { DrawingOptionsBar } from "./tools/DrawingOptionsBar.js";
 import { PresenceList } from "./cursors/PresenceList.js";
 import { CanvasStage } from "./Stage.js";
+import { LayersPanel } from "./layers/LayersPanel.js";
+import { buildLayerRows, reorderRows } from "./layers/layerRows.js";
+import { toggleSelection } from "./selection/selection.js";
 import { colorForUser } from "./presenceColors.js";
 import { useCall } from "../call/useCall.js";
 import { JoinCallButton } from "../call/JoinCallButton.js";
@@ -53,7 +56,8 @@ export function BoardExperience({
   onBoardDeleted,
 }: Props) {
   const { doc, provider } = useYjsDocument(boardId, shareContext);
-  const { shapes, addShape, updateShape, removeShape, splitShape } = useYShapes(doc);
+  const { shapes, addShape, updateShape, updateShapes, moveShapes, removeShapes, splitShape, reorderShapes, groupShapes, ungroupShapes, setLocked } =
+    useYShapes(doc);
   const { undo, redo, canUndo, canRedo } = useUndoManager(doc);
   const preferredColor = useMemo(() => colorForUser(userId ?? "guest"), [userId]);
   const isViewer = role === "viewer";
@@ -76,15 +80,23 @@ export function BoardExperience({
     blendMode,
     applyBrushPreset,
   } = useActiveTool();
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const selectedShape = useMemo(() => shapes.find((s) => s.id === selectedId) ?? null, [shapes, selectedId]);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
+  const selectedShapes = useMemo(() => shapes.filter((s) => selectedIds.includes(s.id)), [shapes, selectedIds]);
+  const visibleShapes = useMemo(() => shapes.filter((s) => !hiddenIds.has(s.id)), [shapes, hiddenIds]);
+  const canGroup = selectedIds.length >= 2;
+  const commonGroupId = useMemo(() => {
+    if (selectedShapes.length < 2) return null;
+    const first = selectedShapes[0]!.groupId;
+    return first && selectedShapes.every((s) => s.groupId === first) ? first : null;
+  }, [selectedShapes]);
 
   // Switching away from the Select tool (eraser, a brush preset, etc.) means
   // the previously-selected shape is no longer the thing being edited — clear
   // it so the options bar shows the new tool's own defaults instead of stale
   // per-shape values, and so its sliders don't keep restyling that shape.
   useEffect(() => {
-    if (tool !== "select") setSelectedId(null);
+    if (tool !== "select") setSelectedIds([]);
   }, [tool]);
 
   const canPublish = roleAtLeast(role, "collaborator");
@@ -183,28 +195,60 @@ export function BoardExperience({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [boardId]);
 
-  // When a shape is selected, these edit it live; with nothing selected,
-  // they fall back to setting the defaults used for the next shape drawn.
+  // When shapes are selected, these edit them live (in bulk); with nothing
+  // selected, they fall back to setting the defaults used for the next shape
+  // drawn.
   const handleColorChange = (color: string) => {
-    if (selectedShape) {
-      // Partial<Shape> distributes over Shape's discriminated union (Partial
-      // is a homomorphic mapped type), so it can't be mutated with a
-      // property that only some variants have — build the literal in one
-      // shot per branch instead.
-      const changes: Partial<Shape> =
-        selectedShape.type === "text" ? { strokeColor: color, fillColor: color } : { strokeColor: color };
-      updateShape(selectedShape.id, changes);
+    if (selectedShapes.length > 0) {
+      updateShapes(
+        selectedShapes.map((s) => ({
+          id: s.id,
+          changes: s.type === "text" ? { strokeColor: color, fillColor: color } : { strokeColor: color },
+        })),
+      );
     } else {
       setStrokeColor(color);
     }
   };
   const handleStrokeWidthChange = (width: number) => {
-    if (selectedShape) updateShape(selectedShape.id, { strokeWidth: width });
-    else setStrokeWidth(width);
+    if (selectedShapes.length > 0) {
+      updateShapes(selectedShapes.map((s) => ({ id: s.id, changes: { strokeWidth: width } })));
+    } else {
+      setStrokeWidth(width);
+    }
   };
   const handleOpacityChange = (nextOpacity: number) => {
-    if (selectedShape) updateShape(selectedShape.id, { opacity: nextOpacity });
-    else setOpacity(nextOpacity);
+    if (selectedShapes.length > 0) {
+      updateShapes(selectedShapes.map((s) => ({ id: s.id, changes: { opacity: nextOpacity } })));
+    } else {
+      setOpacity(nextOpacity);
+    }
+  };
+
+  const handleSelectRow = (ids: string[], shiftKey: boolean) => setSelectedIds((current) => toggleSelection(ids, current, shiftKey));
+
+  const handleToggleLocked = (ids: string[], locked: boolean) => setLocked(ids, locked);
+
+  const handleToggleHidden = (ids: string[]) => {
+    setHiddenIds((current) => {
+      const next = new Set(current);
+      const allHidden = ids.every((id) => next.has(id));
+      for (const id of ids) (allHidden ? next.delete(id) : next.add(id));
+      return next;
+    });
+  };
+
+  const handleReorder = (rowKey: string, targetIndex: number) => {
+    const rows = buildLayerRows(shapes);
+    reorderShapes(reorderRows(rows, rowKey, targetIndex));
+  };
+
+  const handleGroup = () => {
+    if (selectedIds.length >= 2) groupShapes(selectedIds);
+  };
+
+  const handleUngroup = () => {
+    if (commonGroupId) ungroupShapes(commonGroupId);
   };
 
   const joinCallControls = canPublish ? (
@@ -229,9 +273,9 @@ export function BoardExperience({
         </div>
         {!isViewer && (
           <DrawingOptionsBar
-            color={selectedShape?.strokeColor ?? strokeColor}
-            strokeWidth={selectedShape?.strokeWidth ?? strokeWidth}
-            opacity={selectedShape?.opacity ?? opacity}
+            color={selectedShapes[0]?.strokeColor ?? strokeColor}
+            strokeWidth={selectedShapes[0]?.strokeWidth ?? strokeWidth}
+            opacity={selectedShapes[0]?.opacity ?? opacity}
             onColorChange={handleColorChange}
             onStrokeWidthChange={handleStrokeWidthChange}
             onOpacityChange={handleOpacityChange}
@@ -246,26 +290,42 @@ export function BoardExperience({
         )}
         <div className={`${styles.canvasArea} ${readOnlyBadge ? styles.dimmed : ""}`}>
           <CanvasStage
-            shapes={shapes}
+            shapes={visibleShapes}
             peers={peers}
             activeTool={tool}
             strokeColor={strokeColor}
             strokeWidth={strokeWidth}
             opacity={opacity}
             blendMode={blendMode}
-            selectedId={selectedId}
-            onSelectShape={setSelectedId}
+            selectedIds={selectedIds}
+            onSelectionChange={setSelectedIds}
             readOnly={isViewer}
             onAddShape={addShape}
             onUpdateShape={updateShape}
+            onMoveShapes={moveShapes}
             onSplitShape={splitShape}
-            onRemoveShape={removeShape}
+            onRemoveShapes={removeShapes}
             onCursorMove={updateCursor}
           />
           {readOnlyBadge && <span className={styles.readOnlyPill}>read-only view</span>}
         </div>
       </div>
       <div className={styles.rail}>
+        {!isViewer && (
+          <LayersPanel
+            shapes={shapes}
+            selectedIds={selectedIds}
+            hiddenIds={hiddenIds}
+            onSelectRow={handleSelectRow}
+            onToggleLocked={handleToggleLocked}
+            onToggleHidden={handleToggleHidden}
+            onReorder={handleReorder}
+            onGroup={handleGroup}
+            onUngroup={handleUngroup}
+            canGroup={canGroup}
+            canUngroup={commonGroupId !== null}
+          />
+        )}
         {isJoined ? (
           <CallStrip
             participants={participants}
